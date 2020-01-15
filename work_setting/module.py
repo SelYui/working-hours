@@ -2,15 +2,18 @@
 '''
 Модули для записи и чтения из настроечного файла work_setting.txt
 '''
-import os
+import os, datetime
 
-#запись в лог файл сбоев
+#запись в лог файл сбоев + даты сбоя
 def log_info(msg):
     ''' пример вызова
-    module.log_info("hwnd: %s" % hwnd)
+    module.log_info("date: %s" % date)
     '''
+    #получаем время сбоя
+    log_time = datetime.datetime.now()
+    #записываем сбой в файл
     f = open("work_setting\working_hour.log", "a")
-    f.write(msg + "\n")
+    f.write(msg + "            " + str(log_time) + "\n")
     f.close()
     
 #получаем имя файла Exel из нашего настроечного файла
@@ -91,7 +94,7 @@ def read_offset():
     with f:
         lines = f.readlines()
         try:
-            WorkOffset = lines[7]
+            WorkOffset = lines[10]
         except:
             None
     #без символа переноса строки
@@ -105,8 +108,8 @@ def write_offset(new_offset):
     f.close()
     #заменяем седьмую строку на новую
     #проверяем что в файле есть необходимая строка
-    if len(lines)-1 >= 7:
-        lines[7] = str(new_offset) + '\n'
+    if len(lines)-1 >= 10:
+        lines[10] = str(new_offset) + '\n'
     #добавляем в конец списка новый путь
     else:
         lines.append(str(new_offset))
@@ -125,7 +128,7 @@ def read_reload():
     with f:
         lines = f.readlines()
         try:
-            WorkReload = lines[10]
+            WorkReload = lines[13]
         except:
             None
     
@@ -139,8 +142,8 @@ def write_reload(new_reload):
     f.close()
     #заменяем 10 строку на новую
     #проверяем что в файле есть необходимая строка
-    if len(lines)-1 >= 10:
-        lines[10] = str(new_reload) + '\n'
+    if len(lines)-1 >= 13:
+        lines[13] = str(new_reload) + '\n'
     #добавляем в конец списка новый путь
     else:
         lines.append(str(new_reload))
@@ -160,7 +163,7 @@ def read_check():
     with f:
         lines = f.readlines()
         try:
-            CheckNum = lines[13]
+            CheckNum = lines[16]
         except:
             None
     #без символа переноса строки
@@ -174,8 +177,8 @@ def write_checkt(new_check):
     f.close()
     #заменяем седьмую строку на новую
     #проверяем что в файле есть необходимая строка
-    if len(lines)-1 >= 13:
-        lines[13] = str(new_check) + '\n'
+    if len(lines)-1 >= 16:
+        lines[16] = str(new_check) + '\n'
     #добавляем в конец списка новый путь
     else:
         lines.append(str(new_check))
@@ -194,7 +197,7 @@ def read_number():
     with f:
         lines = f.readlines()
         try:
-            CheckNum = lines[16]
+            CheckNum = lines[19]
         except:
             None
     #без символа переноса строки
@@ -208,8 +211,8 @@ def write_number(new_number):
     f.close()
     #заменяем 16 строку на новую
     #проверяем что в файле есть необходимая строка
-    if len(lines)-1 >= 16:
-        lines[16] = str(new_number) + '\n'
+    if len(lines)-1 >= 19:
+        lines[19] = str(new_number) + '\n'
     #добавляем в конец списка новый путь
     else:
         lines.append(str(new_number))
@@ -226,8 +229,8 @@ def write_timeShut(timeShut):
     f.close()
     #заменяем 19 строку на новую
     #проверяем что в файле есть необходимая строка
-    if len(lines)-1 >= 19:
-        lines[19] = str(timeShut) + '\n'
+    if len(lines)-1 >= 22:
+        lines[22] = str(timeShut) + '\n'
     #добавляем в конец списка новый путь
     else:
         lines.append(str(timeShut))
@@ -246,13 +249,13 @@ def read_timeShut():
     with f:
         lines = f.readlines()
         try:
-            timeShut = lines[19]
+            timeShut = lines[22]
         except:
             None
     #без символа переноса строки
     return timeShut[:-1]
 
-#запись в конец настроечного файла
+#запись в настроечный файл времени выключения
 def write_timeExit(timeExit):
     #читаем файл построчно
     f = open('work_setting\work_setting.txt', 'r')
@@ -260,8 +263,8 @@ def write_timeExit(timeExit):
     f.close()
     #заменяем 22 строку на новую
     #проверяем что в файле есть необходимая строка
-    if len(lines)-1 >= 22:
-        lines[22] = str(timeExit) + '\n'
+    if len(lines)-1 >= 25:
+        lines[25] = str(timeExit) + '\n'
     #добавляем в конец списка новый путь
     else:
         lines.append(str(timeExit))
@@ -280,11 +283,45 @@ def read_timeExit():
     with f:
         lines = f.readlines()
         try:
-            timeExit = lines[22]
+            timeExit = lines[25]
         except:
             None
     #без символа переноса строки
     return timeExit[:-1]
+
+#универсальная запись в настроечный файл
+def write_setting(date, num_setting):
+    #читаем файл построчно
+    f = open('work_setting\work_setting.txt', 'r')
+    lines = f.readlines()
+    f.close()
+    #заменяем заданную строку на новую
+    #проверяем что в файле есть необходимая строка
+    if len(lines)-1 >= num_setting:
+        lines[num_setting] = str(date) + '\n'
+    #добавляем новую настройку
+    else:
+        lines.append(str(date))
+    #сохраняем весь список строк в файл
+    save_f = open('work_setting\work_setting.txt', 'w')
+    save_f.writelines(lines)
+    save_f.close()
+    
+#считываем из файла заданной строки
+def read_setting(num_setting):
+    #обнуляем переменную
+    date = 0 #не выставлен
+    
+    #читаем файл построчно и возвращаем 22 строку
+    f = open('work_setting\work_setting.txt', 'r')
+    with f:
+        lines = f.readlines()
+        try:
+            date = lines[num_setting]
+        except:
+            log_info("не считалась строка: %s" % num_setting)
+    #без символа переноса строки, возвращаем тип srt
+    return date[:-1]
 
 #читаем из файла инструкцию
 def read_help():

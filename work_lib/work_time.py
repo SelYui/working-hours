@@ -54,7 +54,7 @@ def start_work(tekminute, tekhour, tekday, tekmonth, tekyear):
         #т.к. страница пустая
         sheet_nrows = 0
         sheet_ncols = 0
-
+    print('start', sheet_nrows)
     #если лист не пустой, будем писать в конец
     if (sheet_nrows and sheet_ncols) != 0:
         #получаем последнюю дату
@@ -67,8 +67,8 @@ def start_work(tekminute, tekhour, tekday, tekmonth, tekyear):
             else:
                 dd = lastdate[0:2]  #день
                 mm = lastdate[3:5]  #месяц
+                time_date_index = i
                 break
-        
         #если месяц совпал
         if tekmonth == int(mm):
             #проверяем на то что день на один меньше
@@ -78,7 +78,7 @@ def start_work(tekminute, tekhour, tekday, tekmonth, tekyear):
             #за сегодня комп включился не первый раз
             elif tekday == int(dd):
                 #сравниваем текущую дату прихода с первым (j) столбцом
-                if time_compare(sheet_nrows, sheet, 1, tekhour, tekminute) == 0:    #если такая дата уже записанна, то ничего не делаем
+                if time_compare(sheet_nrows, sheet, 1, tekhour, tekminute, time_date_index) == 0:    #если такая дата уже записанна, то ничего не делаем
                     return
                 #проверяем время выключения, если менее 30 мин, то не записываем время прихода, выходим из программы
                 if pc_reload(sheet.row_values(sheet_nrows-1)[2], tekhour, tekminute) == 0:
@@ -107,18 +107,18 @@ def start_work(tekminute, tekhour, tekday, tekmonth, tekyear):
     if flg_dontdata != 5826:
         if tekday < 10 and tekmonth < 10:
             write_book.get_sheet(sheet_index).write(i,0,'0'+str(tekday)+'.0'+str(tekmonth)+'.'+str(tekyear))
-        elif tekday < 10 and tekmonth > 10:
+        elif tekday < 10 and tekmonth >= 10:
             write_book.get_sheet(sheet_index).write(i,0,'0'+str(tekday)+'.'+str(tekmonth)+'.'+str(tekyear))
-        elif tekday > 10 and tekmonth < 10:
+        elif tekday >= 10 and tekmonth < 10:
             write_book.get_sheet(sheet_index).write(i,0,''+str(tekday)+'.0'+str(tekmonth)+'.'+str(tekyear))
         else:
             write_book.get_sheet(sheet_index).write(i,0,str(tekday)+'.'+str(tekmonth)+'.'+str(tekyear))    
     #заполняем строку временем
     if tekhour < 10 and tekminute < 10:
         write_book.get_sheet(sheet_index).write(i,1,'0'+str(tekhour)+':0'+str(tekminute))
-    elif tekhour < 10 and tekminute > 10:
+    elif tekhour < 10 and tekminute >= 10:
         write_book.get_sheet(sheet_index).write(i,1,'0'+str(tekhour)+':'+str(tekminute))
-    elif tekhour > 10 and tekminute < 10:
+    elif tekhour >= 10 and tekminute < 10:
         write_book.get_sheet(sheet_index).write(i,1,str(tekhour)+':0'+str(tekminute))
     else:
         write_book.get_sheet(sheet_index).write(i,1,str(tekhour)+':'+str(tekminute))
@@ -183,11 +183,12 @@ def exit_work(tekminute, tekhour, tekday, tekmonth, tekyear):
         sheet_index = read_book.sheet_names().index(str(tekyear))
     except:
         #если листа текущего года нет значит программа start не сработала
+        module.log_info('exit_work: в Exel файле отсутствует страница %s' %tekyear)
         return
     
     #выбираем активным лист с нашим годом
     sheet = read_book.sheet_by_index(sheet_index)
-    
+    print('exit', sheet.nrows)
     #получаем последнюю дату
     i = sheet.nrows-1
     while i > 0:
@@ -209,19 +210,23 @@ def exit_work(tekminute, tekhour, tekday, tekmonth, tekyear):
             #заполняем текущюю, строку 
             i = sheet.nrows-1
         #Если что-то не совпало, то start не сработал чтобы не заполнить другую строку
-        else: return
-    else: return
+        else:
+            module.log_info('exit_work: нет текущей даты')
+            return
+    else:
+        module.log_info('exit_work: нет текущего мксяца')
+        return
     
     #сравниваем текущую дату прихода со вторым (j) столбцом
-    if time_compare(sheet.nrows, sheet, 2, tekhour, tekminute) == 0:    #если такая дата уже записанна, то ничего не делаем
+    if time_compare(sheet.nrows, sheet, 2, tekhour, tekminute, time_date_index) == 0:    #если такая дата уже записанна, то ничего не делаем
         return
-
+    print(10)
     #заполняем строку временем
     if tekhour < 10 and tekminute < 10:
         write_book.get_sheet(sheet_index).write(i,2,'0'+str(tekhour)+':0'+str(tekminute))
-    elif tekhour < 10 and tekminute > 10:
+    elif tekhour < 10 and tekminute >= 10:
         write_book.get_sheet(sheet_index).write(i,2,'0'+str(tekhour)+':'+str(tekminute))
-    elif tekhour > 10 and tekminute < 10:
+    elif tekhour >= 10 and tekminute < 10:
         write_book.get_sheet(sheet_index).write(i,2,str(tekhour)+':0'+str(tekminute))
     else:
         write_book.get_sheet(sheet_index).write(i,2,str(tekhour)+':'+str(tekminute))
@@ -309,23 +314,37 @@ def pc_reload(timeexit, starthour, startminute):
         return 0    #уходили не на долго - выходим
     else: return 1  #уходили на долго - продолжаем работу
 
-#сравниваем время текущее с временем в Exel, если совпало, то не будем записывать
-def time_compare(sheet_nrows, sheet, j, tekhour, tekminute):
+#сравниваем время текущее с временем в Exel, если совпало или меньше, то не будем записывать
+def time_compare(sheet_nrows, sheet, j, tekhour, tekminute, time_date_index):
+    shour = sminute = 0
+    print("я тута %s"%j)
     #получаем последнее время прихода
     i = sheet_nrows-1
-    while i > 0:
+    print('timcomp', sheet_nrows)
+    print(i, time_date_index)
+    #пока мы в текущем дне
+    
+    while (i >= time_date_index):#i > 0:
+        print(1)
         lastdate = sheet.row_values(i)[j]
+        print(2, lastdate)
         #если строка пустая, то ищем дату выше
         if lastdate == '':
+            print(3)
             i=i-1
         else:
+            print(4)
             shour = lastdate[0:2]  #день
             sminute = lastdate[3:5]  #месяц
             break
+    print(shour, sminute)
     #если время совпало с последним записанным временем - ничего не делаем. Выходим из программы
-    if (int(shour) == tekhour) and (int(sminute) == tekminute):
+    if ((int(shour) == tekhour) and (int(sminute) >= tekminute)) or ((int(shour) > tekhour)):
+        print('вышел 0', shour, sminute, tekhour, tekminute)
         return 0    #текущая дата совпадает с последней записанной
-    else: return 1  #не совпадает
+    else:
+        print('вышел 1')
+        return 1  #не совпадает
         
 #действия при выходе из программы по кнопке
 def quit_app():
@@ -344,11 +363,62 @@ def quit_app():
     #записываем время выключения компьютера
     #exit_work(tekminute, tekhour, tekday, tekmonth, tekyear)
 
+#записываем в Exel файл время последнего выключения компьютера
 def write_exit():
-    #записываем в Exel файл время последнего выключения компьютера
+        
     dtimE = module.read_timeExit()
     dtimE = dtimE.split()
     #если приложение закрыл не пользователь
     if (dtimE != ''):
         timE = dtimE[-1]
+        print('записываю %s'%timE)
         exit_work(int(timE[3:5]), int(timE[0:2]), int(dtimE[0]), int(dtimE[1]), int(dtimE[2]))
+    else:
+        msg = "dtimE = %s"% dtimE
+        module.log_info(msg)
+        
+#функция для пересчета всего месяца
+def mount_recount(month, year):
+    date = datetime.datetime.now()
+    tekmonth = date.month #текущий месяц
+    
+    #если пересчитываемый месяц больше текущего
+    if month > tekmonth:
+        return 1
+    
+    #получаем путь к файлу и смещение
+    wt_filename = module.read_path() + '/' + module.read_name()
+    
+    #открываем наш Exel файл
+    read_book = xlrd.open_workbook(str(wt_filename), formatting_info=True)
+    write_book = copy(read_book)
+    
+    #Переходим на лист текущего года
+    try:
+        #если лист с текущим годом уже существует
+        sheet_index = read_book.sheet_names().index(str(year))
+    except:
+        #если листа текущего года нет значит программа start не сработала
+        module.log_info('mount_recount: в Exel файле отсутствует страница %s' %year)
+        return
+    
+    #выбираем активным лист с нашим годом
+    sheet = read_book.sheet_by_index(sheet_index)
+    
+    #ищем наименование заданного месяца в файле
+    i = sheet.nrows-1
+    while sheet.row_values(i)[0] != month_word[month-1]:
+        i=i-1
+    index_sumS = i  #запоминаем строку, c началом заданного месяца
+    #ищем наименование следующего месяца в файле (или конец файла)
+    for i in sheet.nrows-1:
+        if (sheet.row_values(i)[0] != month_word[month]):
+            index_sumE = i-1      #запоминаем строку, c началом следующего месяца месяца
+        else: index_sumE = i    #или запоминаем конец строки, если следующего месяца нет
+    
+    #от начала месяца до конца
+    i = index_sumS
+    while i <= index_sumE:
+        print(1)
+    
+    
