@@ -3,7 +3,7 @@
 основной модуль выполнения программ
 '''
 
-from work_setting import dialog, module
+from work_setting import dialog, module, adjacent_classes
 from work_lib import work_time
 
 if __name__ == '__main__':
@@ -19,5 +19,4 @@ if __name__ == '__main__':
     
     #открываем окно приложения из dialog
     dialog.app_main()   
-    
     

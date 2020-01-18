@@ -138,8 +138,8 @@ def web_main():
             if(timeexit[-1] > max_timE):
                 print("Выключаюсь")
                 #выставляем признак завершения (для потока с таймером завершения)
-                module.write_setting(0, 28)    #ставим признак штатного завершения
-                return
+               
+                return 1234
             else:
                 print("Не выключаюсь")
         except:
