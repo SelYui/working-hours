@@ -72,6 +72,7 @@ def web_main():
     #начальные условия
     name_id = module.read_number()
     my_data = {'type': 'search', 'info': name_id}
+    
     while True:
         print(10)
         #также записываем текущее время в файл, что бы в случае сбоя записать его в Exel файл
@@ -94,17 +95,7 @@ def web_main():
         tek_status = int(lines[0])
         #получаем массивы прихода - ухода
         status_availability = came_left(lines, timestart, timeexit)
-        '''
-        if (status_availability == 1):      #если времени прихода нет
-            msg = 'сотрудник ' + lines[2] + lines[1] + ' еще не пришел'
-            module.log_info(msg)
-        elif (status_availability == 2):    #если времени ухода нет
-            msg = 'сотрудник ' + lines[2] + lines[1] + ' еще не ушел'
-            module.log_info(msg)
-        
-        print('start =', timestart)
-        print('exit =', timeexit)
-        '''
+
         #timeexit = ['18:40']
         
         #записываем массив времен прихода (если вдруг комп включили после нескольких заходов на марс)
@@ -139,14 +130,14 @@ def web_main():
                 print("Выключаюсь")
                 #выставляем признак завершения (для потока с таймером завершения)
                
-                return 1234
+                return True
             else:
                 print("Не выключаюсь")
         except:
             None
         print(11)
         time.sleep(60)
-
+    
 #функция для получения даты с сайта
 def url_date():
     rp = requests.post(url_mars)     #копируем сайт

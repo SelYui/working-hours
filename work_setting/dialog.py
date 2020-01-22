@@ -7,7 +7,7 @@ from work_setting import module, adjacent_classes
 from work_lib import work_time, web_time
 
 from PyQt5.QtWidgets import (QMainWindow, QPushButton, QLineEdit, QLabel, QDesktopWidget, QToolTip, QSystemTrayIcon,
-    QMessageBox, QAction, QFileDialog, QApplication, qApp, QMenu, QSpinBox, QCheckBox, QWidget, QStyle, QTextBrowser, QVBoxLayout)
+    QMessageBox, QAction, QFileDialog, QApplication, QMenu, QSpinBox, QCheckBox, QWidget, QStyle, QTextBrowser, QVBoxLayout, qApp)
 from PyQt5.QtGui import QIcon, QFont, QTextCursor
 from PyQt5.QtCore import Qt, QSize, QThread
 from PyQt5.Qt import QIntValidator, QRegExp, QRegExpValidator
@@ -32,7 +32,7 @@ class MainWindow(QWidget):
         self.obj.start_shut.connect(self.obj.CountTime)
         self.obj.intReady.connect(self.wind.onShutReady)
         self.obj.show_wnd.connect(self.wind.on_show_wnd)
-        self.obj.finished.connect(self.thread.quit)
+        self.obj.finished_global.connect(self.thread.quit)
         #подключаем сигнал потокового подключения к методу
         self.thread.started.connect(self.obj.ShutOrWeb)
         self.thread.finished.connect(self.cleanUp)
@@ -174,7 +174,8 @@ class MainWindow(QWidget):
         #создаем Валидатор для строки времени
         hour = '(2[0123]|([0-1][0-9]))'
         minute = '[0-5][0-9]'
-        timeRange = QRegExp('^' + hour + ':' + minute + '$')
+        simbol = '([0-5][0-9]|:)'
+        timeRange = QRegExp('^' + hour + simbol + minute + '$')
         timeVali = QRegExpValidator(timeRange, self)
         
         self.leshut = QLineEdit(self)                   #создаем строку для ввода выключения компьютера
@@ -183,7 +184,8 @@ class MainWindow(QWidget):
         self.leshut.resize(50,26)                      #размер строки
         self.leshut.setText(str(WorkShut))          #пишем путь из настроечного файла
         self.leshut.setValidator(timeVali)
-        #self.leshut.setInputMask('99:99')
+        self.leshut.textChanged.connect(self.time_shutdow)      #сигнал по изменению текста
+        #self.leshut.selectionChanged.connect(self.del_time_shutdow)
         self.leshut.returnPressed.connect(self.save_setting_btn)    # click on <Enter>
         self.leshut.setEnabled(False)        #делаем строку неактивной
 
@@ -253,7 +255,8 @@ class MainWindow(QWidget):
         #self.btnS.setToolTip('Создать новый файл рабочего времени')    # создаем подсказку для кнопки
         self.btnO.setToolTip('Открыть папку с файлом')    # создаем подсказку для кнопки
         self.btn_save.setToolTip('Сохранить выставленные настройки')    # создаем подсказку для кнопки
-        self.spb.setToolTip('Это смещение от времени вкл/выкл ПК')    # создаем подсказку
+        self.spbO.setToolTip('Укажите время вашего обеда в мин.')
+        self.spb.setToolTip('Укажите смещение от времени вкл/выкл ПК')    # создаем подсказку
         self.lblS.setToolTip('Сколько Вам идти от КПП до рабочего места?')    # создаем подсказку для кнопки
         #self.lblSm.setToolTip('Укажите смещение в минутах')
         self.lblU.setToolTip('Если компьютер выключится на заданное время,\n то в файле Вашего рабочего времени уход не зафиксируется')
@@ -370,8 +373,15 @@ class MainWindow(QWidget):
         #откроем дочернее окно м инструкцией
         self.w = AdjWindow()
         self.w.show()
-
-        
+    
+    #когда текст меняется, пишем ":" во второй символ
+    def time_shutdow(self):
+        text = self.leshut.text()
+        print(text)
+        if (len(text) >= 3):
+            if text[2] != ':':
+                text = text[:2] + ':' + text[2:]
+                self.leshut.setText(text)
         
     #Функция для центрирования окна в экране пользователя
     def center(self):
@@ -416,40 +426,36 @@ class MainWindow(QWidget):
         
     # действие по нажатию на кнопку 'X'
     def closeEvent(self, event):
-        # показываем сообщение с двумя кнопками: «Yes» и «No».
-        # Первая строка появляется в строке заголовка. Вторая строка – это текст сообщения, отображаемый с помощью диалогового окна.
-        # Третий аргумент указывает комбинацию кнопок, появляющихся в диалоге. Последний параметр – кнопка по умолчанию.
-        # Это кнопка, которая первоначально имеет на себе указатель клавиатуры.
-        # Возвращаемое значение хранится в переменной reply.
-        
+        print(333330)
         #если путь в строке не совпадает с тем что записан в настроечном файле
         setting_dir_path = module.read_path() + '/' + module.read_name()
         setting_offset = module.read_offset()
         setting_reload = module.read_reload()
         setting_number = module.read_number()
-        
+        print(333331)
         dir_path = self.le.text()
         work_offset = self.spb.value()
         work_reload = self.spblered.value()
         you_number = self.lenum.text()
-        
+        print(333332)
         if (dir_path != setting_dir_path) or (work_offset != setting_offset) or (you_number != setting_number) or (work_reload != setting_reload):
             reply = QMessageBox.question(self, 'Сообщение', "Вы хотите сохранить настройки?", QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
             # если нажато "Да", сохраняем файл подтверждаем закрыти
             if reply == QMessageBox.Yes:
                 self.save_setting_btn()
-                
+        print(333333)
         #сворачиваем приложение в Tray
         event.ignore()                          #игнорируем выход из программы
         self.hide()                             #скрываем программу
+        print(333334)
         self.tray_icon.showMessage(             #выводим сообщение
                 "System Tray",
                 "Программа свернута",
                 QIcon('icon\Bill.jpg'),
                 1
             )
-        
         event.accept()                          #'''не забыть закоментировать!!!!'''
+        print(333335)
     
     #выход из программы
     def cleanUp(self):
@@ -457,11 +463,17 @@ class MainWindow(QWidget):
         #записываю в лог файл
         module.log_info('Выключаюсь!!!')
         #сохраняем в Exel файл время выхода
+        print(111110)
         work_time.quit_app()
+        print(111111)
         #убираем иконку из Tray
         self.tray_icon.hide()
+        print(111112)
+        
+        #выключаю поток
+        self.thread.quit()
         #сам выход
-        qApp.quit()
+        sys.exit(0)
 
 #создаем окно с подсказкой
 class AdjWindow(QWidget):
@@ -504,5 +516,5 @@ def app_main():
     app = QApplication(sys.argv)
     ex = MainWindow()
     ex.show()                   #не забыть закоментировать
-
+    print(12345678)
     sys.exit(app.exec_())

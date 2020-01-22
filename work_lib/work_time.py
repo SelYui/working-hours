@@ -188,6 +188,7 @@ def exit_work(tekminute, tekhour, tekday, tekmonth, tekyear):
     
     #выбираем активным лист с нашим годом
     sheet = read_book.sheet_by_index(sheet_index)
+    print('sheet123 = ', sheet)
     print('exit', sheet.nrows)
     #получаем последнюю дату
     i = sheet.nrows-1
@@ -376,16 +377,9 @@ def write_exit():
     else:
         msg = "dtimE = %s"% dtimE
         module.log_info(msg)
-        
-#функция для пересчета всего месяца
-def mount_recount(month, year):
-    date = datetime.datetime.now()
-    tekmonth = date.month #текущий месяц
-    
-    #если пересчитываемый месяц больше текущего
-    if month > tekmonth:
-        return 1
-    
+
+#получаем лист из Exel файла
+def year_sheet(year):
     #получаем путь к файлу и смещение
     wt_filename = module.read_path() + '/' + module.read_name()
     
@@ -399,26 +393,303 @@ def mount_recount(month, year):
         sheet_index = read_book.sheet_names().index(str(year))
     except:
         #если листа текущего года нет значит программа start не сработала
-        module.log_info('mount_recount: в Exel файле отсутствует страница %s' %year)
-        return
+        module.log_info('year_sheet: в Exel файле отсутствует страница %s' %year)
+        return 0
     
     #выбираем активным лист с нашим годом
-    sheet = read_book.sheet_by_index(sheet_index)
+    print('sheet0 = ', read_book.sheet_by_index(sheet_index))
+    return read_book.sheet_by_index(sheet_index), write_book
+
+#функция получения массива времян в заданном дне
+def arr_time_day(day, month, year):
+    date = datetime.datetime.now()
+    tekmonth = date.month #текущий месяц
+    tekyear = date.year
+    tekday = date.day
+    
+    #если пересчитываемый месяц больше текущего
+    if year == tekyear and ((month == tekmonth) and (day > tekday)):
+        module.log_info("неверный день = %s"% day)
+        return 1
+    elif year == tekyear and month > tekmonth:
+        module.log_info("неверный месяц = %s"% month)
+        return 1
+    elif(year > tekyear):
+        module.log_info("неверный год = %s"% year)
+        return 1
+
+    #выбираем активным лист с нашим годом
+    exel_sheet = year_sheet(year)
+    sheet = exel_sheet[0]
+    #строковая заданная дата и следующая
+    dan_date = str_date(day, month, year)
+    next_date = str_date(day+1, month, year)
+    
+    #ищем наименование заданного дня в файле
+    i = sheet.nrows-1
+    while sheet.row_values(i)[0] != dan_date and i > 0:
+        i=i-1
+    if i == 0:
+        return 1
+        
+    index_sumS = i  #запоминаем строку, c началом заданного дня
+    #ищем наименование следующего дня в файле (или конец файла)
+    for i in range(index_sumS, sheet.nrows):
+        if (sheet.row_values(i)[0] != dan_date and sheet.row_values(i)[0] != ''):
+            index_sumE = i-1      #запоминаем строку, c началом следующего месяца месяца
+            break
+        else: index_sumE = i    #или запоминаем конец строки, если следующего месяца нет
+    print(index_sumS, index_sumE)
+    
+    #обнуление времен
+    timestart = []
+    timeexit = []
+    i = index_sumS
+    #записываем времена
+    for i in range(index_sumS, index_sumE+1):
+        #если строка пустая, то ищем время дальше
+        if sheet.row_values(i)[1] == '':
+            i=i+1
+        else:
+            timestart.append(sheet.row_values(i)[1])
+    for i in range(index_sumS, index_sumE+1):
+        if sheet.row_values(i)[2] == '':
+            i=i+1
+        else:
+            timeexit.append(sheet.row_values(i)[2])
+    #возвращаем массив времен
+    print('timestart =', timestart)
+    print('timeexit =', timeexit)
+    return timestart, timeexit
+
+#перевод даты из int в str, в формате dd.mm.yyyy
+def str_date(day, month, year):
+    if day < 10 and month < 10:
+        return ('0'+str(day)+'.0'+str(month)+'.'+str(year))
+    elif day < 10 and month >= 10:
+        return('0'+str(day)+'.'+str(month)+'.'+str(year))
+    elif day >= 10 and month < 10:
+        return(''+str(day)+'.0'+str(month)+'.'+str(year))
+    else:
+        return(str(day)+'.'+str(month)+'.'+str(year))     
+
+#перевод времени в числовой формат с округлением до третьего знака
+def convert_time(time):
+    #выделяем часы и минуты прихода
+    hr_start = time[0:2]  #часы
+    min_start = time[3:5]  #минуты
+    return round((int(hr_start) + int(min_start)/60),3)
+
+#функция для вычисления часов в заданном дне
+def time_in_day(timestart, timeexit):
+    diner = int(module.read_setting(7))
+    #переводим в численное представление времени
+    sum_time = 0
+    diner_time = 0
+    for i in range(len(timestart)):
+        timestart[i] = convert_time(timestart[i])
+    for i in range(len(timeexit)):
+        timeexit[i] = convert_time(timeexit[i])
+    
+    #вычисляем отработанное время в дне
+    for i in range(len(timestart)):
+        try:
+            sum_time += (timeexit[i] - timestart[i])
+        except Exception as e:
+            #print('time_in_day 1 = %s', e)
+            None
+        #вычисляем обед
+        try:
+            diner_time += (timestart[i+1] - timeexit[i])
+        except Exception as e:
+            #print('time_in_day 2= %s', e)
+            None
+    #вычитаем обед из отработанных часов
+    if diner_time > diner/60:
+        sum_time = round(sum_time,3)
+    else:
+        sum_time = round(sum_time - (diner/60 - diner_time),3)
+    print('sum_time =', sum_time)    
+    return sum_time
+
+#функция для получения массива дней в месяце
+def arr_day_month(month, year):
+    date = datetime.datetime.now()
+    tekmonth = date.month #текущий месяц
+    
+    #если пересчитываемый месяц больше текущего
+    #if month > tekmonth:
+    #    module.log_info('mount_recount: неверный месяц %s' %month)
+    #    return 1
+
+    #выбираем активным лист с нашим годом
+    exel_sheet = year_sheet(year)
+    sheet = exel_sheet[0]
     
     #ищем наименование заданного месяца в файле
     i = sheet.nrows-1
     while sheet.row_values(i)[0] != month_word[month-1]:
         i=i-1
-    index_sumS = i  #запоминаем строку, c началом заданного месяца
+    index_sumS = i+1  #запоминаем строку, c началом заданного месяца
     #ищем наименование следующего месяца в файле (или конец файла)
-    for i in sheet.nrows-1:
-        if (sheet.row_values(i)[0] != month_word[month]):
-            index_sumE = i-1      #запоминаем строку, c началом следующего месяца месяца
-        else: index_sumE = i    #или запоминаем конец строки, если следующего месяца нет
+    for i in range(index_sumS+1, sheet.nrows):
+        for j in range(len(month_word)):
+            if (sheet.row_values(i)[0] == month_word[j]):
+                print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+                index_sumE = i-1      #запоминаем строку, c началом следующего месяца
+                break
+            else:
+                index_sumE = i    #или запоминаем конец строки, если следующего месяца нет
+        if (sheet.row_values(i)[0] == month_word[j]):
+            print('*********************************************')
+            break
     
-    #от начала месяца до конца
-    i = index_sumS
-    while i <= index_sumE:
-        print(1)
+    #от начала месяца до конца массив дней в месяце
+    month_day = []
+    for i in range(index_sumS, index_sumE+1):
+        if sheet.row_values(i)[0] == '':
+            i=i+1
+        else:
+            #записываем в массив дней в месяце
+            month_day.append(sheet.row_values(i)[0])
+    print('month_day =', month_day)
+    return month_day
+
+#функция для вывода номера дня аванса
+def center_month(month_day):
+    if len(month_day) > 1:
+        for i in range(1, len(month_day)):
+            day_old = month_day[i-1]
+            day = month_day[i]
+            if (int(day[:2]) > 15) and (int(day_old[:2]) <= 15):
+                print('center_month = ', i-1)
+                return i-1
+            
+    return 0
+
+#Функция для подсчета часов в месяце
+def month_recount(month_day, num_cent_day):
+    sum_month_time = 0
+    sum_day_time = []
+    time = []
+    print 
+    for i in range(len(month_day)):
+        print('i=',i)
+        #получаем массив времен в дне
+        day = month_day[i]
+        time = arr_time_day(int(day[:2]), int(day[3:5]), int(day[6:]))
+        #если массив получен нормально, вычисляем сумму в месяце и массив рабочих часов в дне
+        if time != 1:
+            day_time = time_in_day(time[0], time[1])
+            sum_day_time.append(day_time)
+            sum_month_time = sum_month_time + day_time
+            if i == num_cent_day:
+                sum_center_month = sum_month_time
+    print('sum_month_time =', sum_month_time)   #сумма часов в месяце
+    print('sum_day_time =', sum_day_time)       #массив сумм часов в дне
+    print('sum_center_month =', sum_center_month)       #сумма часов в центре месяца
+    return round(sum_month_time, 3), round(sum_center_month, 3), sum_day_time
+
+#Функция получения массива месяцев
+def arr_month_year(year):
+    date = datetime.datetime.now()
+    tekyear = date.year #текущий месяц
     
+    #если пересчитываемый месяц больше текущего
+    if year > tekyear:
+        module.log_info('arr_month_year: неверный год %s' %year)
+        return 1
+
+    #выбираем активным лист с нашим годом
+    exel_sheet = year_sheet(year)
+    sheet = exel_sheet[0]
     
+    #ищем наименование месяцев в файле
+    year_month = []
+    for i in range(sheet.nrows):
+        for j in range(len(month_word)):
+            if sheet.row_values(i)[0] == month_word[j]:
+                #записываем числовые значения месяца
+                year_month.append(j+1)
+                break
+            j=j+1
+        i=i+1
+    return year_month
+
+#Функция для подсчета часов в каждом месяце года  
+def year_recount(year):
+    #получаем массив месяцев
+    year_month = arr_month_year(year)
+    print('year_month =', year_month, len(year_month))
+    #в цикле вычисляем количество рабочих часов в каждом из месяцев
+    for i in range(len(year_month)):
+        print('сейчас считаю %s месяц'% year_month[i])
+        #получаем массив дней в месяце
+        day_in_mount = arr_day_month(year_month[i],year)
+        #получаем номер середины месяца для подсчета аванса
+        num_center_day = center_month(day_in_mount)
+        #получаем количество часов в месяце и до аванса, и массив часов работы в дне
+        sum_month = month_recount(day_in_mount, num_center_day)
+        print('sum_month =', sum_month, len(sum_month))
+        #записываем в Exel 
+        write_sum_month(sum_month[0], sum_month[1], num_center_day, sum_month[2], year_month[i], year)
+
+#запись в Exel файл массива часов работы в месяце и массива часов работы по дням в месяце
+def write_sum_month(sum_month, sum_cnt_month, num_cnt_day, day_in_mount, month, year):
+    #получаем путь к файлу и смещение
+    wt_filename = module.read_path() + '/' + module.read_name()
+    #выбираем активным лист с нашим годом
+    #открываем наш Exel файл
+    read_book = xlrd.open_workbook(str(wt_filename), formatting_info=True)
+    write_book = copy(read_book)
+    
+    #Переходим на лист текущего года
+    try:
+        #если лист с текущим годом уже существует
+        sheet_index = read_book.sheet_names().index(str(year))
+    except:
+        #если листа текущего года нет значит программа start не сработала
+        module.log_info('year_sheet: в Exel файле отсутствует страница %s' %year)
+        return 0
+    
+    #выбираем активным лист с нашим годом
+    sheet = read_book.sheet_by_index(sheet_index)
+    
+    '''
+    exel_sheet = year_sheet(year)
+    sheet = exel_sheet[0]
+    write_book = exel_sheet[1]
+    '''
+    print('sheet = ', sheet)
+    #поиск заданного месяца в файле
+    i = sheet.nrows-1
+    while sheet.row_values(i)[0] != month_word[month-1]:
+        i=i-1
+    index_month = i  #индекс строки месяца
+    #заполняем сумму часов в соответствующую строку
+    write_book.get_sheet(sheet_index).write(index_month,1,str(sum_month))
+    
+    #начиная с начала месяца и до конца массива, записываем часы
+    i_day = index_month + 1
+    i = 0
+    while (i < len(day_in_mount)):
+    #for i in range(len(day_in_mount)):
+        if sheet.row_values(i_day)[0] == '':
+            i_day=i_day+1
+        else:
+            #записываем часы в дне
+            write_book.get_sheet(sheet_index).write(i_day,3,str(day_in_mount[i]))
+            #записываем отработанное кол-во часов до аванса
+            if i == num_cnt_day:
+                write_book.get_sheet(sheet_index).write(i_day,4,str(sum_cnt_month))
+            i_day=i_day+1
+            i = i+1
+    
+    #сохраняем запись
+    try:
+        write_book.save(wt_filename)
+    except Exception as e:
+        module.log_info("Не удалось сохранить в Exel. Exception: %s" % str(e))
+    return 1
+    
+

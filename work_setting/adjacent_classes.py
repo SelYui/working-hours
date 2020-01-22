@@ -17,6 +17,7 @@ class ShowShutOrWeb(QObject):
     #    super(ShowShutOrWeb, self).__init__()
     #объявляем все сигналы
     finished = pyqtSignal()
+    finished_global = pyqtSignal()
     intReady = pyqtSignal(int)
     start_shut = pyqtSignal(int)
     show_wnd = pyqtSignal()
@@ -53,6 +54,7 @@ class ShowShutOrWeb(QObject):
                 #записываем текущее время в файл
                 module.write_timeExit(timeExit.strftime("%d %m %Y %H:%M"))
                 time.sleep(60)
+            self.finished_global.emit()
 
     #если функция вернет 1234, то запустим око с таймером на выключение ПК
     @pyqtSlot()
@@ -60,11 +62,13 @@ class ShowShutOrWeb(QObject):
         print(12345)
         flg_shut = web_time.web_main()
         module.log_info("flg_shut: %s" % flg_shut)
-        if flg_shut == 1234:
+        if flg_shut == True:
             module.write_setting(0, 28)    #ставим признак штатного завершения
             self.start_shut.emit(flg_shut)   #посылаем сигнал а запуск таймера для выключения
-        
-        #self.finished.emit()
+        print(4563)
+        self.finished_global.emit()
+        print(4564)
+        shutdown_lib.signal_shutdown()
     
     #Основной метод счетчика
     @pyqtSlot()
@@ -85,22 +89,7 @@ class ShutWindow(QWidget):
         # Метод super() возвращает объект родителя класса MainWindow и мы вызываем его конструктор.
         # Метод __init__() - это конструктор класса в языке Python.
         super(ShutWindow, self).__init__()
-        '''
-        #создаем поток внутри формы
-        self.obj = ShutTimer()
-        self.thread = QThread()
-        self.shut = ShowShutOrWeb()
-        #соединяем сигналы со слотами формы для вывода данных
-        self.thr.shutReady.connect(self.onShutReady)    #соединяем сигнал команды на выключение
-        self.obj.intReady.connect(self.onIntReady)      #соединяем сигнал счетчика
-        
-        self.obj.moveToThread(self.thread)              #перемещаем метод в thread
-        self.obj.finished.connect(self.thread.quit)     #подключаем сигналы к слотам потока
-        #???????self.thread().started.connect(self.shut.run_web)
-        self.thread.started.connect(self.obj.CountTime) #сигнал потокового подключения к методу
-        
-        #self.thread.finished.connect(app.exit)            #сигнал завершения потока закроет приложение
-        '''
+
         #запуск формы
         self.initUI()
         
@@ -127,7 +116,7 @@ class ShutWindow(QWidget):
         self.btn_stop = QPushButton('Остановить\nвыключение', self) #остановки счетчика
         self.btn_stop.setFont(QFont('Arial', 12))        #Шрифт
         self.btn_stop.move(50, 150)                      #расположение в окне кнопки
-        self.btn_stop.clicked.connect(self.closeprogramm)      #действие по нажатию
+        self.btn_stop.clicked.connect(self.close_programm)      #действие по нажатию
     
     def onShutReady(self, count):
         self.lbl_timer.setText(str(count).rjust(2, '0'))
@@ -137,20 +126,14 @@ class ShutWindow(QWidget):
         self.show()
     
     #по нажатию кнопки 
-    def closeprogramm(self):
-        qApp.quit()
+    def close_programm(self):
+        #сам выход
+        sys.exit(0)
 
             
 #вызываем окно с таймером
 def app_ShutWindow():
-    ''' не заработало...
-    #в цикле считываем признак штатного завершения в потоке
-    while True:
-        run = module.read_setting(28)
-        if int(run) == 0:
-            break
-        time.sleep(1)
-    '''
+
     app = QApplication(sys.argv)
     ex = ShutWindow()
     ex.show()
