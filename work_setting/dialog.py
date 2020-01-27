@@ -97,8 +97,15 @@ class MainWindow(QWidget):
         self.btnO.resize(100,30)                     #размеры
         self.btnO.clicked.connect(self.opendirectory)      #действие по нажатию
         self.btnO.setAutoDefault(True)               # click on <Enter>
-
-    
+        
+        self.btnRec = QPushButton('Пересчитать', self)    #создаем кнопку для пересчета времени в файле
+        self.btnRec.setFont(QFont('Arial', 12))        #Шрифт
+        self.btnRec.move(385, 130)                      #расположение в окне кнопки
+        self.btnRec.resize(100,30)                     #размеры
+        self.btnRec.clicked.connect(self.exel_recount)      #действие по нажатию
+        self.btnRec.setAutoDefault(True)               # click on <Enter>
+        
+        
     #виджеты для времени обеда
         self.lblO = QLabel(self)                        #cоздаем строку с инструкцией для смещения
         self.lblO.setFont(QFont('Arial', 12))        #Шрифт
@@ -254,6 +261,7 @@ class MainWindow(QWidget):
         self.btnI.setToolTip('Выберете файл рабочего времени')    # создаем подсказку для кнопки
         #self.btnS.setToolTip('Создать новый файл рабочего времени')    # создаем подсказку для кнопки
         self.btnO.setToolTip('Открыть папку с файлом')    # создаем подсказку для кнопки
+        self.btnRec.setToolTip('Пересчет рабочего времени в файле\n' + WorkName)    # создаем подсказку для кнопки
         self.btn_save.setToolTip('Сохранить выставленные настройки')    # создаем подсказку для кнопки
         self.spbO.setToolTip('Укажите время вашего обеда в мин.')
         self.spb.setToolTip('Укажите смещение от времени вкл/выкл ПК')    # создаем подсказку
@@ -382,6 +390,24 @@ class MainWindow(QWidget):
             if text[2] != ':':
                 text = text[:2] + ':' + text[2:]
                 self.leshut.setText(text)
+    
+    #функция для перерасчета работы во всем Exel файле
+    def exel_recount(self):
+        #получаем массив годов
+        exel_year = work_time.exel_year()
+    
+        print('exel_year = ', exel_year)
+        #в цикле вычисляем количество рабочих часов в каждом из месяцев в году
+        for i in range(len(exel_year)):
+            result = work_time.year_recount(int(exel_year[i]))
+            if result == 1:
+                #module.log_info("exel_recount exception: %s" % e)
+                message = 'Ошибка пересчета файла\nПожалуйста проверьте, что:\n    - файл составлен корректно (имеет все названия месяцев, все времена прихода и ухода)\n    - файл закрыт\nИ повторите попытку'
+                reply = QMessageBox.warning(self, 'Ошибка', message, QMessageBox.Retry | QMessageBox.Cancel, QMessageBox.Retry)
+                # если нажато "Повтор", запускаемся еще раз
+                if reply == QMessageBox.Retry:
+                    self.exel_recount()
+        print('Пересчитал')
         
     #Функция для центрирования окна в экране пользователя
     def center(self):

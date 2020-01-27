@@ -23,14 +23,11 @@ def you_split_time(my_data):
     except:
         return 1
     lines = rp.text
-    
     #удаляем ненужные символы из ответа
     for i in range(len(symbol)):
         lines = lines.replace(symbol[i],'')
-    
     #получаем массив слов
     lines = lines.split()
-    
     #проверяем наличие человека
     if len(lines) < 7:
         return 2

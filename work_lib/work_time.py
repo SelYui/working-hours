@@ -632,7 +632,7 @@ def year_recount(year):
         sum_month = month_recount(day_in_mount, num_center_day)
         print('sum_month =', sum_month, len(sum_month))
         #записываем в Exel 
-        write_sum_month(sum_month[0], sum_month[1], num_center_day, sum_month[2], year_month[i], year)
+        return write_sum_month(sum_month[0], sum_month[1], num_center_day, sum_month[2], year_month[i], year)
 
 #запись в Exel файл массива часов работы в мес€це и массива часов работы по дн€м в мес€це
 def write_sum_month(sum_month, sum_cnt_month, num_cnt_day, day_in_mount, month, year):
@@ -650,7 +650,7 @@ def write_sum_month(sum_month, sum_cnt_month, num_cnt_day, day_in_mount, month, 
     except:
         #если листа текущего года нет значит программа start не сработала
         module.log_info('year_sheet: в Exel файле отсутствует страница %s' %year)
-        return 0
+        return 1
     
     #выбираем активным лист с нашим годом
     sheet = read_book.sheet_by_index(sheet_index)
@@ -690,6 +690,14 @@ def write_sum_month(sum_month, sum_cnt_month, num_cnt_day, day_in_mount, month, 
         write_book.save(wt_filename)
     except Exception as e:
         module.log_info("Ќе удалось сохранить в Exel. Exception: %s" % str(e))
-    return 1
-    
+        return 1
+    return 0
 
+#функци€ дл€ получени€ массива с годами, хран€щимис€ в exel файле
+def exel_year():
+    #получаем путь к файлу и смещение
+    wt_filename = module.read_path() + '/' + module.read_name()
+    #открываем наш Exel файл
+    read_book = xlrd.open_workbook(str(wt_filename), formatting_info=True)
+    #получаем массив годов
+    return read_book.sheet_names()
