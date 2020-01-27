@@ -1,6 +1,6 @@
-# -*- coding: cp1251 -*-
+# -*- coding: utf-8 -*-
 '''
-одуль для ловли выключения компьютера
+РѕРґСѓР»СЊ РґР»СЏ Р»РѕРІР»Рё РІС‹РєР»СЋС‡РµРЅРёСЏ РєРѕРјРїСЊСЋС‚РµСЂР°
 '''
 
 import os
@@ -46,34 +46,37 @@ class MyWindow:
         win32gui.UpdateWindow(self.hwnd)
         #win32gui.ShowWindow(self.hwnd, win32con.SW_SHOW)
     
-    #действия при ловле сигнала выключения компьютера
+    #РґРµР№СЃС‚РІРёСЏ РїСЂРё Р»РѕРІР»Рµ СЃРёРіРЅР°Р»Р° РІС‹РєР»СЋС‡РµРЅРёСЏ РєРѕРјРїСЊСЋС‚РµСЂР°
     #@staticmethod
     def OnDestroy(self, hwd, message, wparam, lparam):
         #work_time.quit_app()
-        #получаем текущее время
+        #РїРѕР»СѓС‡Р°РµРј С‚РµРєСѓС‰РµРµ РІСЂРµРјСЏ
         timeExit = datetime.datetime.now()
-        #записываем время выключения в файл
+        #Р·Р°РїРёСЃС‹РІР°РµРј РІСЂРµРјСЏ РІС‹РєР»СЋС‡РµРЅРёСЏ РІ С„Р°Р№Р»
         module.write_timeExit(timeExit.strftime("%d %m %Y %H:%M"))
         win32gui.PostQuitMessage(0)
         return True
 
-#основная функция для использования  
+#РѕСЃРЅРѕРІРЅР°СЏ С„СѓРЅРєС†РёСЏ РґР»СЏ РёСЃРїРѕР»СЊР·РѕРІР°РЅРёСЏ  
 def shutdown_lib():
     module.log_info("system: %s" % os.name)
-    #определяем текущую ОС
-    #если виндовс
+    #РѕРїСЂРµРґРµР»СЏРµРј С‚РµРєСѓС‰СѓСЋ РћРЎ
+    #РµСЃР»Рё РІРёРЅРґРѕРІСЃ
     if os.name == "nt":
-        #создаем окно windows и ловим сообщение выключения компьютера
+        #СЃРѕР·РґР°РµРј РѕРєРЅРѕ windows Рё Р»РѕРІРёРј СЃРѕРѕР±С‰РµРЅРёРµ РІС‹РєР»СЋС‡РµРЅРёСЏ РєРѕРјРїСЊСЋС‚РµСЂР°
         w= MyWindow()
         win32gui.PumpMessages()
-    #если нет (Linux или Mac)
+    #РµСЃР»Рё РЅРµС‚ (Linux РёР»Рё Mac)
     else:
-        #ловим сообщение выключения в другом формате
+        #Р»РѕРІРёРј СЃРѕРѕР±С‰РµРЅРёРµ РІС‹РєР»СЋС‡РµРЅРёСЏ РІ РґСЂСѓРіРѕРј С„РѕСЂРјР°С‚Рµ
         while True:
             #signal.signal(signal.SIGTERM, MyWindow().OnDestroy)
             time.sleep(1)
 
-#выключение компьютера
+#РІС‹РєР»СЋС‡РµРЅРёРµ РєРѕРјРїСЊСЋС‚РµСЂР°
 def signal_shutdown():
-    
-    os.system('shutdown -s')
+    if os.name == 'nt':
+        os.system('shutdown -s')
+    else:
+        os.system('sudo shutdown now')
+        #os.system('systemctrl poweroff')

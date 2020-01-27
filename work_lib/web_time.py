@@ -1,54 +1,54 @@
-# -*- coding: cp1251 -*-
+# -*- coding: utf-8 -*-
 '''
-Модуль для получения рабочего времени с сайта марса
+РњРѕРґСѓР»СЊ РґР»СЏ РїРѕР»СѓС‡РµРЅРёСЏ СЂР°Р±РѕС‡РµРіРѕ РІСЂРµРјРµРЅРё СЃ СЃР°Р№С‚Р° РјР°СЂСЃР°
 '''
 import time, datetime, requests
 from work_setting import dialog, module, adjacent_classes
 from work_lib import work_time, shutdown_lib
 
-#после чтения с сайта удаляем ненужные символы
+#РїРѕСЃР»Рµ С‡С‚РµРЅРёСЏ СЃ СЃР°Р№С‚Р° СѓРґР°Р»СЏРµРј РЅРµРЅСѓР¶РЅС‹Рµ СЃРёРјРІРѕР»С‹
 symbol = ['<table border="1" data-count="','<th class="header" colspan="3">','<tr class="header">','</table>','<tr>','</tr>','<th>', '</th>','</td>','<td>','">',]
-#массив для поиска даты
-datemass = "Отчёт по проходной - сотрудники на предприятии "
-#на этом сайте хранится все
+#РјР°СЃСЃРёРІ РґР»СЏ РїРѕРёСЃРєР° РґР°С‚С‹
+datemass = "РћС‚С‡С‘С‚ РїРѕ РїСЂРѕС…РѕРґРЅРѕР№ - СЃРѕС‚СЂСѓРґРЅРёРєРё РЅР° РїСЂРµРґРїСЂРёСЏС‚РёРё "
+#РЅР° СЌС‚РѕРј СЃР°Р№С‚Рµ С…СЂР°РЅРёС‚СЃСЏ РІСЃРµ
 url_mars = 'http://www.mars/asu/report/enterexit/'
-#на этом сайте хранится время прихода
+#РЅР° СЌС‚РѕРј СЃР°Р№С‚Рµ С…СЂР°РЅРёС‚СЃСЏ РІСЂРµРјСЏ РїСЂРёС…РѕРґР°
 url = 'getinfo.php'
 
-#функция для получения строки с моими данными с сайта Марса
+#С„СѓРЅРєС†РёСЏ РґР»СЏ РїРѕР»СѓС‡РµРЅРёСЏ СЃС‚СЂРѕРєРё СЃ РјРѕРёРјРё РґР°РЅРЅС‹РјРё СЃ СЃР°Р№С‚Р° РњР°СЂСЃР°
 def you_split_time(my_data):
-    #отправляем запрос на получение данных для определенного работника
+    #РѕС‚РїСЂР°РІР»СЏРµРј Р·Р°РїСЂРѕСЃ РЅР° РїРѕР»СѓС‡РµРЅРёРµ РґР°РЅРЅС‹С… РґР»СЏ РѕРїСЂРµРґРµР»РµРЅРЅРѕРіРѕ СЂР°Р±РѕС‚РЅРёРєР°
     try:
         rp = requests.post(url_mars+url, data = my_data)
     except:
         return 1
     lines = rp.text
-    #удаляем ненужные символы из ответа
+    #СѓРґР°Р»СЏРµРј РЅРµРЅСѓР¶РЅС‹Рµ СЃРёРјРІРѕР»С‹ РёР· РѕС‚РІРµС‚Р°
     for i in range(len(symbol)):
         lines = lines.replace(symbol[i],'')
-    #получаем массив слов
+    #РїРѕР»СѓС‡Р°РµРј РјР°СЃСЃРёРІ СЃР»РѕРІ
     lines = lines.split()
-    #проверяем наличие человека
+    #РїСЂРѕРІРµСЂСЏРµРј РЅР°Р»РёС‡РёРµ С‡РµР»РѕРІРµРєР°
     if len(lines) < 7:
         return 2
     
     return lines
 
-#получаем массивы времени прихода/ухода (точность до минуты)
+#РїРѕР»СѓС‡Р°РµРј РјР°СЃСЃРёРІС‹ РІСЂРµРјРµРЅРё РїСЂРёС…РѕРґР°/СѓС…РѕРґР° (С‚РѕС‡РЅРѕСЃС‚СЊ РґРѕ РјРёРЅСѓС‚С‹)
 def came_left(lines, timestart, timeexit):
     count = 7
     while count < len(lines):
-        #время прихода
+        #РІСЂРµРјСЏ РїСЂРёС…РѕРґР°
         try:
             start_tek = lines[count]
-            timestart.append(start_tek[:5]) #записываем только часы и минуты
+            timestart.append(start_tek[:5]) #Р·Р°РїРёСЃС‹РІР°РµРј С‚РѕР»СЊРєРѕ С‡Р°СЃС‹ Рё РјРёРЅСѓС‚С‹
         except IndexError:
             return 1
     
-        #время первого ухода
+        #РІСЂРµРјСЏ РїРµСЂРІРѕРіРѕ СѓС…РѕРґР°
         try:
             exit_tek = lines[count+1]
-            timeexit.append(exit_tek[:5])   #записываем только часы и минуты
+            timeexit.append(exit_tek[:5])   #Р·Р°РїРёСЃС‹РІР°РµРј С‚РѕР»СЊРєРѕ С‡Р°СЃС‹ Рё РјРёРЅСѓС‚С‹
         except IndexError:
             return 2
     
@@ -57,88 +57,95 @@ def came_left(lines, timestart, timeexit):
     return count
 
 def web_main():
-    #получаем дату с сайта
+    #РїРѕР»СѓС‡Р°РµРј РґР°С‚Сѓ СЃ СЃР°Р№С‚Р°
     date = url_date()
-    tekday = int(date[8:10])    #текущий день
-    tekmonth = int(date[5:7])   #текущий месяц
-    tekyear = int(date[0:4])    #текущий год
-    print(date, tekday, tekmonth, tekyear)
+    if date == 1:
+        module.log_info('РЅРµС‚ С‚Р°РєРѕРіРѕ СЃР°Р№С‚Р°')
+        data = datetime.datetime.now()
+        tekyear = data.year   #РўРµРєСѓС‰РёР№ РіРѕРґ
+        tekmonth = data.month #С‚РµРєСѓС‰РёР№ РјРµСЃСЏС†
+        tekday = data.day     #С‚РµРєСѓС‰РµРµ С‡РёСЃР»Рѕ
+    else:
+        tekday = int(date[8:10])    #С‚РµРєСѓС‰РёР№ РґРµРЅСЊ
+        tekmonth = int(date[5:7])   #С‚РµРєСѓС‰РёР№ РјРµСЃСЏС†
+        tekyear = int(date[0:4])    #С‚РµРєСѓС‰РёР№ РіРѕРґ
+        print(date, tekday, tekmonth, tekyear)
     
-    #получаем время после которого выключим компьютер
-    max_timE = module.read_timeShut()
-    #начальные условия
-    name_id = module.read_number()
+    #РїРѕР»СѓС‡Р°РµРј РІСЂРµРјСЏ РїРѕСЃР»Рµ РєРѕС‚РѕСЂРѕРіРѕ РІС‹РєР»СЋС‡РёРј РєРѕРјРїСЊСЋС‚РµСЂ
+    max_timE = module.read_setting(25)
+    #РЅР°С‡Р°Р»СЊРЅС‹Рµ СѓСЃР»РѕРІРёСЏ
+    name_id = module.read_setting(19)
     my_data = {'type': 'search', 'info': name_id}
     
     while True:
         print(10)
-        #также записываем текущее время в файл, что бы в случае сбоя записать его в Exel файл
-        #получаем текущее время
+        #С‚Р°РєР¶Рµ Р·Р°РїРёСЃС‹РІР°РµРј С‚РµРєСѓС‰РµРµ РІСЂРµРјСЏ РІ С„Р°Р№Р», С‡С‚Рѕ Р±С‹ РІ СЃР»СѓС‡Р°Рµ СЃР±РѕСЏ Р·Р°РїРёСЃР°С‚СЊ РµРіРѕ РІ Exel С„Р°Р№Р»
+        #РїРѕР»СѓС‡Р°РµРј С‚РµРєСѓС‰РµРµ РІСЂРµРјСЏ
         timeExit = datetime.datetime.now()
-        #записываем текущее время в файл
-        module.write_timeExit(timeExit.strftime("%d %m %Y %H:%M"))
+        #Р·Р°РїРёСЃС‹РІР°РµРј С‚РµРєСѓС‰РµРµ РІСЂРµРјСЏ РІ С„Р°Р№Р»
+        module.write_setting(timeExit.strftime("%d %m %Y %H:%M"),25)
         
         timestart = []
         timeexit = []
         lines = you_split_time(my_data)
         if lines == 1:
-            module.log_info('сервер не отвечает')
+            module.log_info('СЃРµСЂРІРµСЂ РЅРµ РѕС‚РІРµС‡Р°РµС‚')
         elif lines == 2:
-            msg = ('пропуск человека с номером', name_id, 'не пробит')
+            msg = ('РїСЂРѕРїСѓСЃРє С‡РµР»РѕРІРµРєР° СЃ РЅРѕРјРµСЂРѕРј', name_id, 'РЅРµ РїСЂРѕР±РёС‚')
             module.log_info(msg)
+        else:
+            #СЃС‚Р°С‚СѓСЃ РЅР°Р»РёС‡РёСЏ С‡РµР»РѕРІРµРєР° РЅР° РїСЂРµРґРїСЂРёСЏС‚РёРё (СЌС‚Рѕ Р»РёС€РЅРµРµ, С‚.Рє. РµСЃС‚СЊ РґСЂСѓРіРёРµ РјРµС‚РѕРґС‹ РїСЂРѕРІРµСЂРєРё)
+            tek_status = int(lines[0])
+            #РїРѕР»СѓС‡Р°РµРј РјР°СЃСЃРёРІС‹ РїСЂРёС…РѕРґР° - СѓС…РѕРґР°
+            status_availability = came_left(lines, timestart, timeexit)
 
-
-        #статус наличия человека на предприятии (это лишнее, т.к. есть другие методы проверки)
-        tek_status = int(lines[0])
-        #получаем массивы прихода - ухода
-        status_availability = came_left(lines, timestart, timeexit)
-
-        #timeexit = ['18:40']
+            #timeexit = ['18:40']
         
-        #записываем массив времен прихода (если вдруг комп включили после нескольких заходов на марс)
-        i = 0
-        while(i < len(timestart)):
-            print('cycl = ',i, len(timestart))
-            #получаем последнее время прихода, записываем его в Exel
-            try:
-                timeS = timestart[i]
-                #записываем время прихода на работу
-                work_time.start_work(int(timeS[3:5]), int(timeS[0:2]), tekday, tekmonth, tekyear)
-            except:
-                msg = ('не удалось записать время прихода')
-                module.log_info(msg)
-            print(12)
-            try:
-                print(13)
-                timeE = timeexit[i]
-                #записываем время ухода
-                work_time.exit_work(int(timeE[3:5]), int(timeE[0:2]), tekday, tekmonth, tekyear)
-            except:
-                print(14)
-                msg = ('не удалось записать время ухода')
-                module.log_info(msg)
-            print(timestart, timeexit)
-            print('end_cycl')
-            i=i+1
+            #Р·Р°РїРёСЃС‹РІР°РµРј РјР°СЃСЃРёРІ РІСЂРµРјРµРЅ РїСЂРёС…РѕРґР° (РµСЃР»Рё РІРґСЂСѓРі РєРѕРјРї РІРєР»СЋС‡РёР»Рё РїРѕСЃР»Рµ РЅРµСЃРєРѕР»СЊРєРёС… Р·Р°С…РѕРґРѕРІ РЅР° РјР°СЂСЃ)
+            for i in range(len(timestart)):
+                print('cycl = ',i, len(timestart))
+                #РїРѕР»СѓС‡Р°РµРј РїРѕСЃР»РµРґРЅРµРµ РІСЂРµРјСЏ РїСЂРёС…РѕРґР°, Р·Р°РїРёСЃС‹РІР°РµРј РµРіРѕ РІ Exel
+                try:
+                    timeS = timestart[i]
+                    #Р·Р°РїРёСЃС‹РІР°РµРј РІСЂРµРјСЏ РїСЂРёС…РѕРґР° РЅР° СЂР°Р±РѕС‚Сѓ
+                    work_time.start_work(int(timeS[3:5]), int(timeS[0:2]), tekday, tekmonth, tekyear)
+                except:
+                    msg = ('РЅРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РїРёСЃР°С‚СЊ РІСЂРµРјСЏ РїСЂРёС…РѕРґР°')
+                    module.log_info(msg)
+                print(12)
+                try:
+                    print(13)
+                    timeE = timeexit[i]
+                    #Р·Р°РїРёСЃС‹РІР°РµРј РІСЂРµРјСЏ СѓС…РѕРґР°
+                    work_time.exit_work(int(timeE[3:5]), int(timeE[0:2]), tekday, tekmonth, tekyear)
+                except:
+                    print(14)
+                    msg = ('РЅРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РїРёСЃР°С‚СЊ РІСЂРµРјСЏ СѓС…РѕРґР°')
+                    module.log_info(msg)
+                print(timestart, timeexit)
+                print('end_cycl')
+                i=i+1
 
-        try:
-            #условие выключения компьютера
-            if(timeexit[-1] > max_timE):
-                print("Выключаюсь")
-                #выставляем признак завершения (для потока с таймером завершения)
-               
-                return True
-            else:
-                print("Не выключаюсь")
-        except:
-            None
-        print(11)
+            try:
+                #СѓСЃР»РѕРІРёРµ РІС‹РєР»СЋС‡РµРЅРёСЏ РєРѕРјРїСЊСЋС‚РµСЂР°
+                if(timeexit[-1] > max_timE):
+                    print("Р’С‹РєР»СЋС‡Р°СЋСЃСЊ")
+                    #РІС‹СЃС‚Р°РІР»СЏРµРј РїСЂРёР·РЅР°Рє Р·Р°РІРµСЂС€РµРЅРёСЏ (РґР»СЏ РїРѕС‚РѕРєР° СЃ С‚Р°Р№РјРµСЂРѕРј Р·Р°РІРµСЂС€РµРЅРёСЏ)
+                    return True
+                else:
+                    print("РќРµ РІС‹РєР»СЋС‡Р°СЋСЃСЊ")
+            except:
+                None
+            print(11)
         time.sleep(60)
     
-#функция для получения даты с сайта
+#С„СѓРЅРєС†РёСЏ РґР»СЏ РїРѕР»СѓС‡РµРЅРёСЏ РґР°С‚С‹ СЃ СЃР°Р№С‚Р°
 def url_date():
-    rp = requests.post(url_mars)     #копируем сайт
+    try:
+        rp = requests.post(url_mars)     #РєРѕРїРёСЂСѓРµРј СЃР°Р№С‚
+    except:
+        return 1
     lines = rp.text                 
-    num = lines.find(datemass)      #ищем строку с датой
-    return lines[num+47:num+57]     #выделяем дату
+    num = lines.find(datemass)      #РёС‰РµРј СЃС‚СЂРѕРєСѓ СЃ РґР°С‚РѕР№
+    return lines[num+47:num+57]     #РІС‹РґРµР»СЏРµРј РґР°С‚Сѓ
     

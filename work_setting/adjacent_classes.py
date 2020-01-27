@@ -1,6 +1,6 @@
-# -*- coding: cp1251 -*-
+# -*- coding: utf-8 -*-
 '''
-Модули с описанием смежных классов
+РњРѕРґСѓР»Рё СЃ РѕРїРёСЃР°РЅРёРµРј СЃРјРµР¶РЅС‹С… РєР»Р°СЃСЃРѕРІ
 '''
 from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, qApp, QApplication
 from PyQt5.QtGui import QFont
@@ -9,13 +9,13 @@ from PyQt5.QtCore import QThread, Qt, QBasicTimer, QObject, pyqtSignal, pyqtSlot
 from work_lib import work_time, web_time, shutdown_lib
 from work_setting import module, dialog
 import datetime, time, sys, threading
-from win32com.test.testIterators import SomeObject
+#from win32com.test.testIterators import SomeObject
 
-#организуем многопоточнсть (считываем с сайта или ловим выключение компьютера в отдельном потоке)
+#РѕСЂРіР°РЅРёР·СѓРµРј РјРЅРѕРіРѕРїРѕС‚РѕС‡РЅСЃС‚СЊ (СЃС‡РёС‚С‹РІР°РµРј СЃ СЃР°Р№С‚Р° РёР»Рё Р»РѕРІРёРј РІС‹РєР»СЋС‡РµРЅРёРµ РєРѕРјРїСЊСЋС‚РµСЂР° РІ РѕС‚РґРµР»СЊРЅРѕРј РїРѕС‚РѕРєРµ)
 class ShowShutOrWeb(QObject):
     #def __init__(self):
     #    super(ShowShutOrWeb, self).__init__()
-    #объявляем все сигналы
+    #РѕР±СЉСЏРІР»СЏРµРј РІСЃРµ СЃРёРіРЅР°Р»С‹
     finished = pyqtSignal()
     finished_global = pyqtSignal()
     intReady = pyqtSignal(int)
@@ -23,54 +23,54 @@ class ShowShutOrWeb(QObject):
     show_wnd = pyqtSignal()
     
     def ShutOrWeb(self):
-        #если выставлена галочка работы с сайтом - считываем сайт
-        if(module.read_check()):
+        #РµСЃР»Рё РІС‹СЃС‚Р°РІР»РµРЅР° РіР°Р»РѕС‡РєР° СЂР°Р±РѕС‚С‹ СЃ СЃР°Р№С‚РѕРј - СЃС‡РёС‚С‹РІР°РµРј СЃР°Р№С‚
+        if(int(module.read_setting(16))):
             print(1234)
-            #запускаем функцию чтения данных с сайта марса во втором потоке
+            #Р·Р°РїСѓСЃРєР°РµРј С„СѓРЅРєС†РёСЋ С‡С‚РµРЅРёСЏ РґР°РЅРЅС‹С… СЃ СЃР°Р№С‚Р° РјР°СЂСЃР° РІРѕ РІС‚РѕСЂРѕРј РїРѕС‚РѕРєРµ
             self.RunWeb()
             
-        #иначе работам через "отлов" включения/выключение компьютера
+        #РёРЅР°С‡Рµ СЂР°Р±РѕС‚Р°Рј С‡РµСЂРµР· "РѕС‚Р»РѕРІ" РІРєР»СЋС‡РµРЅРёСЏ/РІС‹РєР»СЋС‡РµРЅРёРµ РєРѕРјРїСЊСЋС‚РµСЂР°
         else:
-            #получаем текущую дату и время компа
+            #РїРѕР»СѓС‡Р°РµРј С‚РµРєСѓС‰СѓСЋ РґР°С‚Сѓ Рё РІСЂРµРјСЏ РєРѕРјРїР°
             tekdateandtimeStart = datetime.datetime.now()
     
-            tekyear = tekdateandtimeStart.year   #Текущий год
-            tekmonth = tekdateandtimeStart.month #текущий месяц
-            tekday = tekdateandtimeStart.day     #текущее число
-            tekhour = tekdateandtimeStart.hour   #текущий час
-            tekminute = tekdateandtimeStart.minute    #текущая минута
-            #записываем в Exel файл время последнего выключения компьютера
+            tekyear = tekdateandtimeStart.year   #РўРµРєСѓС‰РёР№ РіРѕРґ
+            tekmonth = tekdateandtimeStart.month #С‚РµРєСѓС‰РёР№ РјРµСЃСЏС†
+            tekday = tekdateandtimeStart.day     #С‚РµРєСѓС‰РµРµ С‡РёСЃР»Рѕ
+            tekhour = tekdateandtimeStart.hour   #С‚РµРєСѓС‰РёР№ С‡Р°СЃ
+            tekminute = tekdateandtimeStart.minute    #С‚РµРєСѓС‰Р°СЏ РјРёРЅСѓС‚Р°
+            #Р·Р°РїРёСЃС‹РІР°РµРј РІ Exel С„Р°Р№Р» РІСЂРµРјСЏ РїРѕСЃР»РµРґРЅРµРіРѕ РІС‹РєР»СЋС‡РµРЅРёСЏ РєРѕРјРїСЊСЋС‚РµСЂР°
             work_time.write_exit()
     
-            #записываем время включения компьютера
+            #Р·Р°РїРёСЃС‹РІР°РµРј РІСЂРµРјСЏ РІРєР»СЋС‡РµРЅРёСЏ РєРѕРјРїСЊСЋС‚РµСЂР°
             work_time.start_work(tekminute, tekhour, tekday, tekmonth, tekyear)
             
-            #запускаем бесконечный цикл для опроса сигналов виндовс
+            #Р·Р°РїСѓСЃРєР°РµРј Р±РµСЃРєРѕРЅРµС‡РЅС‹Р№ С†РёРєР» РґР»СЏ РѕРїСЂРѕСЃР° СЃРёРіРЅР°Р»РѕРІ РІРёРЅРґРѕРІСЃ
             #shutdown_lib.shutdown_lib()
-            #2ой вариант, просто записываем каждую минуту в файл текущее время (так тратим меньше ресурсов и не надо "ловить" выключение компьютера)
+            #2РѕР№ РІР°СЂРёР°РЅС‚, РїСЂРѕСЃС‚Рѕ Р·Р°РїРёСЃС‹РІР°РµРј РєР°Р¶РґСѓСЋ РјРёРЅСѓС‚Сѓ РІ С„Р°Р№Р» С‚РµРєСѓС‰РµРµ РІСЂРµРјСЏ (С‚Р°Рє С‚СЂР°С‚РёРј РјРµРЅСЊС€Рµ СЂРµСЃСѓСЂСЃРѕРІ Рё РЅРµ РЅР°РґРѕ "Р»РѕРІРёС‚СЊ" РІС‹РєР»СЋС‡РµРЅРёРµ РєРѕРјРїСЊСЋС‚РµСЂР°)
             while True:
-                #получаем текущее время
+                #РїРѕР»СѓС‡Р°РµРј С‚РµРєСѓС‰РµРµ РІСЂРµРјСЏ
                 timeExit = datetime.datetime.now()
-                #записываем текущее время в файл
-                module.write_timeExit(timeExit.strftime("%d %m %Y %H:%M"))
+                #Р·Р°РїРёСЃС‹РІР°РµРј С‚РµРєСѓС‰РµРµ РІСЂРµРјСЏ РІ С„Р°Р№Р»
+                module.write_setting(timeExit.strftime("%d %m %Y %H:%M"),25)
                 time.sleep(60)
             self.finished_global.emit()
 
-    #если функция вернет 1234, то запустим око с таймером на выключение ПК
+    #РµСЃР»Рё С„СѓРЅРєС†РёСЏ РІРµСЂРЅРµС‚ 1234, С‚Рѕ Р·Р°РїСѓСЃС‚РёРј РѕРєРѕ СЃ С‚Р°Р№РјРµСЂРѕРј РЅР° РІС‹РєР»СЋС‡РµРЅРёРµ РџРљ
     @pyqtSlot()
     def RunWeb(self):
         print(12345)
         flg_shut = web_time.web_main()
         module.log_info("flg_shut: %s" % flg_shut)
         if flg_shut == True:
-            module.write_setting(0, 28)    #ставим признак штатного завершения
-            self.start_shut.emit(flg_shut)   #посылаем сигнал а запуск таймера для выключения
-        print(4563)
-        self.finished_global.emit()
-        print(4564)
-        shutdown_lib.signal_shutdown()
+            module.write_setting(0, 28)    #СЃС‚Р°РІРёРј РїСЂРёР·РЅР°Рє С€С‚Р°С‚РЅРѕРіРѕ Р·Р°РІРµСЂС€РµРЅРёСЏ
+            self.start_shut.emit(flg_shut)   #РїРѕСЃС‹Р»Р°РµРј СЃРёРіРЅР°Р» РЅР° Р·Р°РїСѓСЃРє С‚Р°Р№РјРµСЂР° РґР»СЏ РІС‹РєР»СЋС‡РµРЅРёСЏ
+            print(4563)
+            self.finished_global.emit()
+            print(4564)
+            shutdown_lib.signal_shutdown()
     
-    #Основной метод счетчика
+    #РћСЃРЅРѕРІРЅРѕР№ РјРµС‚РѕРґ СЃС‡РµС‚С‡РёРєР°
     @pyqtSlot()
     def CountTime(self):
         self.show_wnd.emit()
@@ -82,41 +82,41 @@ class ShowShutOrWeb(QObject):
             time.sleep(1)
         self.finished.emit()
         
-#класс для таймера выключения
+#РєР»Р°СЃСЃ РґР»СЏ С‚Р°Р№РјРµСЂР° РІС‹РєР»СЋС‡РµРЅРёСЏ
 class ShutWindow(QWidget):
    
     def __init__(self):
-        # Метод super() возвращает объект родителя класса MainWindow и мы вызываем его конструктор.
-        # Метод __init__() - это конструктор класса в языке Python.
+        # РњРµС‚РѕРґ super() РІРѕР·РІСЂР°С‰Р°РµС‚ РѕР±СЉРµРєС‚ СЂРѕРґРёС‚РµР»СЏ РєР»Р°СЃСЃР° MainWindow Рё РјС‹ РІС‹Р·С‹РІР°РµРј РµРіРѕ РєРѕРЅСЃС‚СЂСѓРєС‚РѕСЂ.
+        # РњРµС‚РѕРґ __init__() - СЌС‚Рѕ РєРѕРЅСЃС‚СЂСѓРєС‚РѕСЂ РєР»Р°СЃСЃР° РІ СЏР·С‹РєРµ Python.
         super(ShutWindow, self).__init__()
 
-        #запуск формы
+        #Р·Р°РїСѓСЃРє С„РѕСЂРјС‹
         self.initUI()
         
     def initUI(self):
         
-        self.resize(200,200)                                # Устанавливаем фиксированные размеры окна
-        self.setWindowFlags(Qt.FramelessWindowHint|Qt.WindowStaysOnTopHint)         # окно без рамки
+        self.resize(200,200)                                # РЈСЃС‚Р°РЅР°РІР»РёРІР°РµРј С„РёРєСЃРёСЂРѕРІР°РЅРЅС‹Рµ СЂР°Р·РјРµСЂС‹ РѕРєРЅР°
+        self.setWindowFlags(Qt.FramelessWindowHint|Qt.WindowStaysOnTopHint)         # РѕРєРЅРѕ Р±РµР· СЂР°РјРєРё
         #self.setWindowOpacity(0.6)
         self.setAttribute(Qt.WA_TranslucentBackground)
         
-        self.ldl = QLabel(self)                 #лейбл приветствия
-        self.ldl.setFont(QFont('Arial', 12))        #Шрифт
-        self.ldl.setText('До выключения остальсь:')
-        self.ldl.move(5, 10)                      #расположение в окне
-        self.ldl.adjustSize()                           #адаптивный размер в зависимости от содержимого
+        self.ldl = QLabel(self)                 #Р»РµР№Р±Р» РїСЂРёРІРµС‚СЃС‚РІРёСЏ
+        self.ldl.setFont(QFont('Arial', 12))        #РЁСЂРёС„С‚
+        self.ldl.setText('Р”Рѕ РІС‹РєР»СЋС‡РµРЅРёСЏ РѕСЃС‚Р°Р»СЊСЃСЊ:')
+        self.ldl.move(5, 10)                      #СЂР°СЃРїРѕР»РѕР¶РµРЅРёРµ РІ РѕРєРЅРµ
+        self.ldl.adjustSize()                           #Р°РґР°РїС‚РёРІРЅС‹Р№ СЂР°Р·РјРµСЂ РІ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ СЃРѕРґРµСЂР¶РёРјРѕРіРѕ
         
-        self.lbl_timer = QLabel(self)                   #лейбл со счетчиком
-        self.lbl_timer.setFont(QFont('Arial', 100))        #Шрифт
+        self.lbl_timer = QLabel(self)                   #Р»РµР№Р±Р» СЃРѕ СЃС‡РµС‚С‡РёРєРѕРј
+        self.lbl_timer.setFont(QFont('Arial', 100))        #РЁСЂРёС„С‚
         self.lbl_timer.setText('60')
-        self.lbl_timer.move(25, 20)                      #расположение в окне
-        self.lbl_timer.adjustSize()                           #адаптивный размер в зависимости от содержимого
-        self.lbl_timer.setStyleSheet('color: red')                 #цвет текста красный
+        self.lbl_timer.move(25, 20)                      #СЂР°СЃРїРѕР»РѕР¶РµРЅРёРµ РІ РѕРєРЅРµ
+        self.lbl_timer.adjustSize()                           #Р°РґР°РїС‚РёРІРЅС‹Р№ СЂР°Р·РјРµСЂ РІ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ СЃРѕРґРµСЂР¶РёРјРѕРіРѕ
+        self.lbl_timer.setStyleSheet('color: red')                 #С†РІРµС‚ С‚РµРєСЃС‚Р° РєСЂР°СЃРЅС‹Р№
         
-        self.btn_stop = QPushButton('Остановить\nвыключение', self) #остановки счетчика
-        self.btn_stop.setFont(QFont('Arial', 12))        #Шрифт
-        self.btn_stop.move(50, 150)                      #расположение в окне кнопки
-        self.btn_stop.clicked.connect(self.close_programm)      #действие по нажатию
+        self.btn_stop = QPushButton('РћСЃС‚Р°РЅРѕРІРёС‚СЊ\nРІС‹РєР»СЋС‡РµРЅРёРµ', self) #РѕСЃС‚Р°РЅРѕРІРєРё СЃС‡РµС‚С‡РёРєР°
+        self.btn_stop.setFont(QFont('Arial', 12))        #РЁСЂРёС„С‚
+        self.btn_stop.move(50, 150)                      #СЂР°СЃРїРѕР»РѕР¶РµРЅРёРµ РІ РѕРєРЅРµ РєРЅРѕРїРєРё
+        self.btn_stop.clicked.connect(self.close_programm)      #РґРµР№СЃС‚РІРёРµ РїРѕ РЅР°Р¶Р°С‚РёСЋ
     
     def onShutReady(self, count):
         self.lbl_timer.setText(str(count).rjust(2, '0'))
@@ -125,13 +125,15 @@ class ShutWindow(QWidget):
     def on_show_wnd(self):
         self.show()
     
-    #по нажатию кнопки 
+    #РїРѕ РЅР°Р¶Р°С‚РёСЋ РєРЅРѕРїРєРё 
     def close_programm(self):
-        #сам выход
-        sys.exit(0)
+        ex = dialog.MainWindow()
+        ex.cleanUp()
+        #СЃР°Рј РІС‹С…РѕРґ
+        #sys.exit(0)
 
             
-#вызываем окно с таймером
+#РІС‹Р·С‹РІР°РµРј РѕРєРЅРѕ СЃ С‚Р°Р№РјРµСЂРѕРј
 def app_ShutWindow():
 
     app = QApplication(sys.argv)
