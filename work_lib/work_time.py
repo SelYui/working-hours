@@ -34,7 +34,11 @@ def start_work(tekminute, tekhour, tekday, tekmonth, tekyear):
         tekminute = 60 + (tekminute - min_offset)
     
     #открываем наш Exel файл
-    read_book = xlrd.open_workbook(str(wt_filename), formatting_info=True)
+    try:
+        read_book = xlrd.open_workbook(str(wt_filename), formatting_info=True)
+    except:
+        module.log_info('start_work: файл Exel отсутствует')
+        return
     write_book = copy(read_book)
     #Переходим на лист текущего года
     try:
@@ -173,7 +177,11 @@ def exit_work(tekminute, tekhour, tekday, tekmonth, tekyear):
         tekminute = (tekminute + min_offset) - 60
     
     #открываем наш Exel файл
-    read_book = xlrd.open_workbook(str(wt_filename), formatting_info=True)
+    try:
+        read_book = xlrd.open_workbook(str(wt_filename), formatting_info=True)
+    except:
+        module.log_info('exit_work: файл Exel отсутствует')
+        return
     write_book = copy(read_book)
     
     #Переходим на лист текущего года
@@ -211,10 +219,10 @@ def exit_work(tekminute, tekhour, tekday, tekmonth, tekyear):
             i = sheet.nrows-1
         #Если что-то не совпало, то start не сработал чтобы не заполнить другую строку
         else:
-            module.log_info('exit_work: нет текущей даты')
+            module.log_info('exit_work: нет текущей даты %s'% sheet.nrows)
             return
     else:
-        module.log_info('exit_work: нет текущего мксяца')
+        module.log_info('exit_work: нет текущего мксяца %s'% sheet.nrows)
         return
     
     #сравниваем текущую дату прихода со вторым (j) столбцом
@@ -337,7 +345,7 @@ def time_compare(sheet_nrows, sheet, j, tekhour, tekminute, time_date_index):
             shour = lastdate[0:2]  #день
             sminute = lastdate[3:5]  #месяц
             break
-    print(shour, sminute)
+    print(shour, sminute, i)
     #если время совпало с последним записанным временем - ничего не делаем. Выходим из программы
     if ((int(shour) == tekhour) and (int(sminute) >= tekminute)) or ((int(shour) > tekhour)):
         print('вышел 0', shour, sminute, tekhour, tekminute)
@@ -578,6 +586,7 @@ def month_recount(month_day, num_cent_day):
         day = month_day[i]
         time = arr_time_day(int(day[:2]), int(day[3:5]), int(day[6:]))
         #если массив получен нормально, вычисляем сумму в месяце и массив рабочих часов в дне
+        print('time = ', time)
         if time != 1:
             day_time = time_in_day(time[0], time[1])
             sum_day_time.append(day_time)
@@ -631,7 +640,9 @@ def year_recount(year):
         sum_month = month_recount(day_in_mount, num_center_day)
         print('sum_month =', sum_month, len(sum_month))
         #записываем в Exel 
-        return write_sum_month(sum_month[0], sum_month[1], num_center_day, sum_month[2], year_month[i], year)
+        if(write_sum_month(sum_month[0], sum_month[1], num_center_day, sum_month[2], year_month[i], year) == 1):
+            return 1
+    return 0    
 
 #запись в Exel файл массива часов работы в месяце и массива часов работы по дням в месяце
 def write_sum_month(sum_month, sum_cnt_month, num_cnt_day, day_in_mount, month, year):
@@ -654,11 +665,6 @@ def write_sum_month(sum_month, sum_cnt_month, num_cnt_day, day_in_mount, month, 
     #выбираем активным лист с нашим годом
     sheet = read_book.sheet_by_index(sheet_index)
     
-    '''
-    exel_sheet = year_sheet(year)
-    sheet = exel_sheet[0]
-    write_book = exel_sheet[1]
-    '''
     print('sheet = ', sheet)
     #поиск заданного месяца в файле
     i = sheet.nrows-1

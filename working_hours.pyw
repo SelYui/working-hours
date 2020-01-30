@@ -16,7 +16,7 @@ if __name__ == '__main__':
         print('нештат')
         work_time.write_exit()   
     #выставляем признак нештатного завершения
-    module.write_setting(1, 28)                    #не забыть раскомментировать!!!
+    #module.write_setting(1, 28)                    #не забыть раскомментировать!!!
     
     #открываем окно приложения из dialog
     dialog.app_main()   

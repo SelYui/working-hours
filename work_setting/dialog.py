@@ -6,10 +6,10 @@ import os, sys, subprocess, time, webbrowser
 from work_setting import module, adjacent_classes
 from work_lib import work_time, web_time
 
-from PyQt5.QtWidgets import (QMainWindow, QPushButton, QLineEdit, QLabel, QDesktopWidget, QToolTip, QSystemTrayIcon,
-    QMessageBox, QAction, QFileDialog, QApplication, QMenu, QSpinBox, QCheckBox, QWidget, QStyle, QTextBrowser, QVBoxLayout, qApp)
+from PyQt5.QtWidgets import (QMainWindow, QPushButton, QLineEdit, QLabel, QDesktopWidget, QToolTip, QSystemTrayIcon, QProgressBar, QDialog,
+    QMessageBox, QAction, QFileDialog, QApplication, QMenu, QSpinBox, QCheckBox, QWidget, QStyle, QTextBrowser, QHBoxLayout, QVBoxLayout, QGridLayout)
 from PyQt5.QtGui import QIcon, QFont, QTextCursor
-from PyQt5.QtCore import Qt, QSize, QThread
+from PyQt5.QtCore import Qt, QSize, QBasicTimer, QThread
 from PyQt5.Qt import QIntValidator, QRegExp, QRegExpValidator
 
 url_mars = 'http://www.mars/asu/report/enterexit/'
@@ -24,18 +24,27 @@ class MainWindow(QWidget):
         
         #создаем поток внутри формы
         self.obj = adjacent_classes.ShowShutOrWeb()
+        self.obj_progress = adjacent_classes.ThreadProgressRecount()
         self.thread = QThread()
+        self.thread_progress = QThread()
         self.wind = adjacent_classes.ShutWindow()
+        self.act = adjacent_classes.ProgressRecount()
         #перемещаем в thread
         self.obj.moveToThread(self.thread)
+        self.obj_progress.moveToThread(self.thread_progress)
         #подключаем сигналы к слотам потока и к слотами формы для вывода данных
         self.obj.start_shut.connect(self.obj.CountTime)     #сигнал на запуск таймера выключения
         self.obj.intReady.connect(self.wind.onShutReady)    #сигнал для вывода счетчика таймера
         self.obj.show_wnd.connect(self.wind.on_show_wnd)    #показываем окно с счетчиком
         self.obj.finished_global.connect(self.thread.quit)  #конец потока
+        self.obj_progress.count_changed.connect(self.act.doAction)    #сигнал для вывода прогресса пересчета
+        self.obj_progress.show_act.connect(self.act.on_show_act)
+        self.obj_progress.finished_progress.connect(self.thread_progress.quit)
         #подключаем сигнал потокового подключения к методу
         self.thread.started.connect(self.obj.ShutOrWeb)
         self.thread.finished.connect(self.cleanUp)
+        self.thread_progress.started.connect(self.obj_progress.ThreadRecount)
+        self.thread_progress.finished.connect(self.off_show_act)
         
         #запуск потока
         self.thread.start()
@@ -53,55 +62,41 @@ class MainWindow(QWidget):
         YouNumber = module.read_setting(19)#read_number()
         CheckNum = int(module.read_setting(16))#read_check()
         WorkShut = module.read_setting(22)#read_timeShut()
-        
-    #окно стало неизменяемых размеров
-        self.setFixedSize(QSize(495, 360))             # Устанавливаем фиксированные размеры окна
+     
+    #Создаем само окно
+        self.resize(495, 360)                            # Устанавливаем начальные размеры окна
         self.setWindowTitle("Подсчёт рабочего времени")  # Устанавливаем заголовок окна
         self.setWindowIcon(QIcon('icon\Bill_chipher.jpg'))         # Устанавливаем иконку
         self.center()               # помещаем окно в центр экрана
-
-        
+    
+    
     #виджеты для имени файла
         self.lblN = QLabel(self)                    #создаем лейбел с именем файла
         self.lblN.setFont(QFont('Arial', 12))        #Шрифт
         self.lblN.setText('Настройки файла ' + WorkName)
-        self.lblN.move(10, 10)                      #расположение в окне
-        self.lblN.adjustSize()                           #адаптивный размер в зависимости от содержимого
 
         
     #виджеты для пути к файлу
         self.lblI = QLabel(self)                    #cоздаем строку с инструкцией
         self.lblI.setFont(QFont('Arial', 12))        #Шрифт
         self.lblI.setText("Путь к файлу:")
-        self.lblI.move(10, 50)                      #расположение в окне
-        self.lblI.adjustSize()                           #адаптивный размер в зависимости от содержимого
-        #self.lblI.resize(200, 30)
         
         self.le = QLineEdit(self)                   #создаем строку для ввода пути к файлу
         self.le.setFont(QFont('Arial', 12))         #Шрифт
-        self.le.move(10, 72)                        #расположение в окне 
-        self.le.resize(360,26)                      #размер строки 
         self.le.setText(WorkPath + '/' + WorkName)  #пишем путь из настроечного файла
-        #self.le.returnPressed.connect(self.btn_save.click)  # click on <Enter>
         
         self.btnI = QPushButton('Изменить', self)       #создаем кнопку для изменения расположения файла
         self.btnI.setFont(QFont('Arial', 12))        #Шрифт
-        self.btnI.move(385, 70)                      #расположение в окне кнопки
-        self.btnI.resize(100,30)                     #размеры
         self.btnI.clicked.connect(self.getfile)      #действие по нажатию
         self.btnI.setAutoDefault(True)               # click on <Enter>
 
         self.btnO = QPushButton('Открыть', self)    #создаем кнопку для открытия директории/файла
         self.btnO.setFont(QFont('Arial', 12))        #Шрифт
-        self.btnO.move(385, 100)                      #расположение в окне кнопки
-        self.btnO.resize(100,30)                     #размеры
         self.btnO.clicked.connect(self.opendirectory)      #действие по нажатию
         self.btnO.setAutoDefault(True)               # click on <Enter>
         
         self.btnRec = QPushButton('Пересчитать', self)    #создаем кнопку для пересчета времени в файле
         self.btnRec.setFont(QFont('Arial', 12))        #Шрифт
-        self.btnRec.move(385, 130)                      #расположение в окне кнопки
-        self.btnRec.resize(100,30)                     #размеры
         self.btnRec.clicked.connect(self.exel_recount)      #действие по нажатию
         self.btnRec.setAutoDefault(True)               # click on <Enter>
         
@@ -109,14 +104,10 @@ class MainWindow(QWidget):
     #виджеты для времени обеда
         self.lblO = QLabel(self)                        #cоздаем строку с инструкцией для смещения
         self.lblO.setFont(QFont('Arial', 12))        #Шрифт
-        self.lblO.setText("Обед:              мин.")
-        self.lblO.move(10, 130)                      #расположение в окне
-        self.lblO.adjustSize()                       #адаптивный размер в зависимости от содержимого
+        self.lblO.setText("Обед (мин.):")
         
         self.spbO = QSpinBox(self)                   #создаем SpinBox для выбора времени
         self.spbO.setFont(QFont('Arial', 12))        #Шрифт
-        self.spbO.move(60, 128)                     #расположение в окне кнопки
-        self.spbO.resize(45, 25)                     #размер
         self.spbO.setMaximum(60)                     #верхняя граница счетчика
         self.spbO.setMinimum(0)                      #нижняя граница счетчика
         self.spbO.setSingleStep(5)                   #шаг
@@ -125,14 +116,10 @@ class MainWindow(QWidget):
     #cоздаем виджеты для смещения
         self.lblS = QLabel(self)                        #cоздаем строку с инструкцией для смещения
         self.lblS.setFont(QFont('Arial', 12))        #Шрифт
-        self.lblS.setText("Смещение:               мин.")
-        self.lblS.move(10, 160)                      #расположение в окне
-        self.lblS.adjustSize()                       #адаптивный размер в зависимости от содержимого
+        self.lblS.setText("Смещение (мин.):")
         
         self.spb = QSpinBox(self)                   #создаем SpinBox для выбора времени
         self.spb.setFont(QFont('Arial', 12))        #Шрифт
-        self.spb.move(100, 158)                     #расположение в окне кнопки
-        self.spb.resize(45, 25)                     #размер
         self.spb.setMaximum(60)                     #верхняя граница счетчика
         self.spb.setMinimum(0)                      #нижняя граница счетчика
         self.spb.setValue(WorkOffset)
@@ -141,14 +128,10 @@ class MainWindow(QWidget):
     #cоздаем виджеты для времени ухода
         self.lblU = QLabel(self)                        #cоздаем строку с инструкцией для времени безопасного ухода
         self.lblU.setFont(QFont('Arial', 12))        #Шрифт
-        self.lblU.setText("Возможный уход:               мин.")
-        self.lblU.move(10, 192)                      #расположение в окне
-        self.lblU.adjustSize()                       #адаптивный размер в зависимости от содержимого
+        self.lblU.setText("Возможный уход (мин.):")
         
         self.spblered = QSpinBox(self)                  #создаем SpinBox для выбора времени ухода
         self.spblered.setFont(QFont('Arial', 12))        #Шрифт
-        self.spblered.move(145, 190)                     #расположение в окне кнопки
-        self.spblered.resize(45, 25)                     #размер
         self.spblered.setMaximum(60)                     #верхняя граница счетчика
         self.spblered.setMinimum(0)                      #нижняя граница счетчика
         self.spblered.setSingleStep(5)                        #шаг
@@ -159,13 +142,9 @@ class MainWindow(QWidget):
         self.lblCh = QLabel(self)                   #cоздаем строку с инструкцией для индивидуального номера
         self.lblCh.setFont(QFont('Arial', 12))        #Шрифт
         self.lblCh.setText("Ваш номер на сайте:")
-        self.lblCh.move(10, 261)                      #расположение в окне
-        self.lblCh.adjustSize()                       #адаптивный размер в зависимости от содержимого
         
         self.lenum = QLineEdit(self)                #создаем строку для ввода индивидуального номера сотрудника
         self.lenum.setFont(QFont('Arial', 12))         #Шрифт
-        self.lenum.move(170, 259)                        #расположение в окне 
-        self.lenum.resize(45,26)                      #размер строки
         self.lenum.setValidator(QIntValidator(0,9999))
         self.lenum.setText(YouNumber)          #пишем путь из настроечного файла
         self.lenum.returnPressed.connect(self.save_setting_btn) # click on <Enter>
@@ -176,8 +155,6 @@ class MainWindow(QWidget):
         self.lblSh = QLabel(self)                   #cоздаем строку с инструкцией для времени выключения
         self.lblSh.setFont(QFont('Arial', 12))        #Шрифт
         self.lblSh.setText("Выключать компьютер после:")
-        self.lblSh.move(10, 292)                      #расположение в окне
-        self.lblSh.adjustSize()                       #адаптивный размер в зависимости от содержимого
         
         #создаем Валидатор для строки времени
         hour = '(2[0123]|([0-1][0-9]))'
@@ -188,20 +165,15 @@ class MainWindow(QWidget):
         
         self.leshut = QLineEdit(self)                   #создаем строку для ввода выключения компьютера
         self.leshut.setFont(QFont('Arial', 12))         #Шрифт
-        self.leshut.move(235, 290)                        #расположение в окне 
-        self.leshut.resize(50,26)                      #размер строки
         self.leshut.setText(str(WorkShut))          #пишем путь из настроечного файла
         self.leshut.setValidator(timeVali)
         self.leshut.textChanged.connect(self.time_shutdow)      #сигнал по изменению текста
-        #self.leshut.selectionChanged.connect(self.del_time_shutdow)
         self.leshut.returnPressed.connect(self.save_setting_btn)    # click on <Enter>
         self.leshut.setEnabled(False)        #делаем строку неактивной
 
     #виджеты для выбора режима работы (по вкл/выкл, по сайту)
         self.chweb = QCheckBox('Брать время с сайта Марса', self)   #создаем checkbox для выбора подчета времени с сайта Марса
         self.chweb.setFont(QFont('Arial', 12))          #Шрифт
-        self.chweb.move(10, 230)
-        self.chweb.adjustSize()                           #адаптивный размер в зависимости от содержимого
         self.chweb.stateChanged.connect(self.webtime)           #действие по нажатию
 
         #выставляем в соответствии с настройками
@@ -211,9 +183,7 @@ class MainWindow(QWidget):
             self.chweb.setChecked(False)
             
         self.btnch = QPushButton('?', self)         #создаем кнопку для подсказки
-        self.btnch.setFont(QFont('Arial', 18))        #Шрифт
-        self.btnch.move(235, 230)                      #расположение в окне кнопки
-        self.btnch.resize(20, 26)
+        self.btnch.setFont(QFont('Arial', 12))        #Шрифт
         try:
             self.btnch.clicked.connect(self.openhelp)      #действие по нажатию
         except Exception as e:
@@ -224,16 +194,16 @@ class MainWindow(QWidget):
     #виджеты для сохранения
         self.btn_save = QPushButton('Сохранить', self)  #создаем кнопку для всплывающего диалогового окна
         self.btn_save.setFont(QFont('Arial', 12))        #Шрифт
-        self.btn_save.move(385, 320)                      #расположение в окне кнопки
-        self.btn_save.resize(100,30)                    #размеры
         self.btn_save.clicked.connect(self.save_setting_btn)      #действие по нажатию
         self.btn_save.setDefault(True)                      #значально будет выделена
         self.btn_save.setAutoDefault(True)               # click on <Enter>
         
         self.le.returnPressed.connect(self.btn_save.click)  #действия в строке по интеру
         self.lenum.returnPressed.connect(self.btn_save.click)  #действия в строке по интеру
-        #self.spb.returnPressed.connect(self.btn_save.click)    #действия в SpinBox по интеру
 
+    #раскладываем виджеты в главном окне
+        self.layout_in_main()
+    
     # Инициализируем иконку Tray
         self.tray_icon = QSystemTrayIcon(self)
         self.tray_icon.setIcon(QIcon('icon\Bill_chipher.jpg')) #устанавливаем пользовательскую иконку
@@ -390,6 +360,7 @@ class MainWindow(QWidget):
         #откроем дочернее окно м инструкцией
         self.w = AdjWindow()
         self.w.show()
+        #self.w.exec()
     
     #когда текст меняется, пишем ":" во второй символ
     def time_shutdow(self):
@@ -402,21 +373,67 @@ class MainWindow(QWidget):
     
     #функция для перерасчета работы во всем Exel файле
     def exel_recount(self):
-        #получаем массив годов
-        exel_year = work_time.exel_year()
-    
-        print('exel_year = ', exel_year)
-        #в цикле вычисляем количество рабочих часов в каждом из месяцев в году
-        for i in range(len(exel_year)):
-            result = work_time.year_recount(int(exel_year[i]))
-            if result == 1:
-                #module.log_info("exel_recount exception: %s" % e)
-                message = 'Ошибка пересчета файла\nПожалуйста проверьте, что:\n    - файл составлен корректно (имеет все названия месяцев, все времена прихода и ухода)\n    - файл закрыт\nИ повторите попытку'
-                reply = QMessageBox.warning(self, 'Ошибка', message, QMessageBox.Retry | QMessageBox.Cancel, QMessageBox.Retry)
-                # если нажато "Повтор", запускаемся еще раз
-                if reply == QMessageBox.Retry:
-                    self.exel_recount()
-        print('Пересчитал')
+        #adjacent_classes.app_ProgressRecount()
+        self.thread_progress.start()
+
+    #функция выключения окна прогресса пересчета
+    def off_show_act(self):
+        self.act.hide()
+        print('выхожу2')
+
+    #Функция для расположения виджетов в окне
+    def layout_in_main(self):
+    #создаем слои и сетки
+        self.h_boxN = QHBoxLayout()
+        self.h_boxN.addWidget(self.lblN)
+        
+        self.h_boxI = QHBoxLayout()
+        self.h_boxI.addWidget(self.lblI)
+        #сетка для кнопок
+        self.grid_btnIO = QGridLayout()
+        self.grid_btnIO.addWidget(self.le, 1, 0, 1, 4)
+        self.grid_btnIO.addWidget(self.btnI, 1, 5)
+        self.grid_btnIO.addWidget(self.btnO, 2, 5)
+        
+        self.h_boxO = QHBoxLayout()
+        self.h_boxO.addWidget(self.lblO)
+        self.h_boxO.addWidget(self.spbO)
+        self.h_boxO.addStretch(1)
+        
+        self.h_boxS = QHBoxLayout()
+        self.h_boxS.addWidget(self.lblS)
+        self.h_boxS.addWidget(self.spb)
+        self.h_boxS.addStretch(1)
+        
+        self.h_boxU = QHBoxLayout()
+        self.h_boxU.addWidget(self.lblU)
+        self.h_boxU.addWidget(self.spblered)
+        self.h_boxU.addStretch(1)
+        
+        self.h_box_web = QHBoxLayout()
+        self.h_box_web.addWidget(self.chweb)
+        self.h_box_web.addWidget(self.btnch)
+        self.h_box_web.addStretch(1)
+        #сетка для остальных виджетов
+        self.grid_other = QGridLayout()
+        self.grid_other.addWidget(self.lblCh, 1, 0)
+        self.grid_other.addWidget(self.lenum, 1, 1)
+        self.grid_other.addWidget(self.lblSh, 2, 0, 1, 4)
+        self.grid_other.addWidget(self.leshut, 2, 2)
+        self.grid_other.addWidget(self.btnRec, 3, 7)
+        self.grid_other.addWidget(self.btn_save, 3, 8)
+    #заносим все в горисонтальный слой
+        self.v_box = QVBoxLayout()
+        self.v_box.addLayout(self.h_boxN)
+        self.v_box.addLayout(self.h_boxI)
+        self.v_box.addLayout(self.grid_btnIO)
+        self.v_box.addLayout(self.h_boxO)
+        self.v_box.addLayout(self.h_boxS)
+        self.v_box.addLayout(self.h_boxU)
+        self.v_box.addLayout(self.h_box_web)
+        self.v_box.addLayout(self.grid_other)
+    #помещаем на страницу
+        self.setLayout(self.v_box)
         
     #Функция для центрирования окна в экране пользователя
     def center(self):
@@ -513,7 +530,7 @@ class MainWindow(QWidget):
         sys.exit(0)
 
 #создаем окно с подсказкой
-class AdjWindow(QWidget):
+class AdjWindow(QDialog):
    
     def __init__(self):
         # Метод super() возвращает объект родителя класса MainWindow и мы вызываем его конструктор.
@@ -528,17 +545,17 @@ class AdjWindow(QWidget):
         self.setWindowIcon(self.style().standardIcon(QStyle.SP_TitleBarContextHelpButton))   #устанавливаем одну из стандартных иконку
         #self.setPalette(appearance)                         #Применяем палитру к нашему окну
         
-        text = module.read_help()#'Зайдите на сайт: <br><a href="http://www.mars/asu/report/enterexit/">www.mars/asu/report/enterexit/</a><br> текст'
+        text = module.read_help()
         #чтобы наше поле занимало все окно
-        vbox = QVBoxLayout(self)
+        self.vbox = QVBoxLayout()
         #создаем поле с текстом инструкции и ссылкой
         self.pole_vivod = QTextBrowser(self)
         self.pole_vivod.setFont(QFont('Arial', 14))        #Шрифт
         self.pole_vivod.anchorClicked['QUrl'].connect(self.linkClicked)
         self.pole_vivod.setOpenLinks(False)     #Запрет удаления ссылки
         #self.pole_vivod.move(0, 0)
-        vbox.addWidget(self.pole_vivod)
-        self.setLayout(vbox)
+        self.vbox.addWidget(self.pole_vivod)
+        self.setLayout(self.vbox)
         
         self.pole_vivod.append(text)
         self.pole_vivod.moveCursor(QTextCursor.Start)

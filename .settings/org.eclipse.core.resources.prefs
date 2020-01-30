@@ -1,8 +1,8 @@
 eclipse.preferences.version=1
-encoding//work_lib/shutdown_lib.py=cp1251
-encoding//work_lib/web_time.py=cp1251
-encoding//work_lib/work_time.py=cp1251
-encoding//work_setting/adjacent_classes.py=cp1251
+encoding//work_lib/shutdown_lib.py=utf-8
+encoding//work_lib/web_time.py=utf-8
+encoding//work_lib/work_time.py=utf-8
+encoding//work_setting/adjacent_classes.py=utf-8
 encoding//work_setting/dialog.py=utf-8
 encoding//work_setting/module.py=cp1251
 encoding/working_hours.pyw=utf-8

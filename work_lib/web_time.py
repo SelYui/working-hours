@@ -57,6 +57,7 @@ def came_left(lines, timestart, timeexit):
     return count
 
 def web_main():
+    #return True
     #получаем дату с сайта
     date = url_date()
     if date == 1:
