@@ -22,6 +22,12 @@ class MainWindow(QWidget):
         # Метод __init__() - это конструктор класса в языке Python.
         super().__init__()
         
+        #инициализация потоков
+        self.initThread()
+        # инициализация GUI
+        self.initUI()
+        
+    def initThread(self):
         #создаем поток внутри формы
         self.obj = adjacent_classes.ShowShutOrWeb()
         self.obj_progress = adjacent_classes.ThreadProgressRecount()
@@ -39,6 +45,7 @@ class MainWindow(QWidget):
         self.obj.finished_global.connect(self.thread.quit)  #конец потока
         self.obj_progress.count_changed.connect(self.act.doAction)    #сигнал для вывода прогресса пересчета
         self.obj_progress.show_act.connect(self.act.on_show_act)
+        self.obj_progress.not_recount.connect(self.do_not_rec)
         self.obj_progress.finished_progress.connect(self.thread_progress.quit)
         #подключаем сигнал потокового подключения к методу
         self.thread.started.connect(self.obj.ShutOrWeb)
@@ -46,22 +53,16 @@ class MainWindow(QWidget):
         self.thread_progress.started.connect(self.obj_progress.ThreadRecount)
         self.thread_progress.finished.connect(self.off_show_act)
         
-        #запуск потока
-        self.thread.start()
-        
-        # Создание GUI поручено методу initUI().
-        self.initUI()
-        
     def initUI(self):
-        #получаем путь к файлу и имя файла Exel из нашего настроечного файла
-        WorkPath = module.read_setting(4)#read_path()
-        WorkName = module.read_setting(1)#read_name()
+        #получаем настройки из файла
+        WorkPath = module.read_setting(4)
+        WorkName = module.read_setting(1)
         WorkDiner = module.read_setting(7)
-        WorkOffset = int(module.read_setting(10))#read_offset()
-        WorkReload = int(module.read_setting(13))#read_reload()
-        YouNumber = module.read_setting(19)#read_number()
-        CheckNum = int(module.read_setting(16))#read_check()
-        WorkShut = module.read_setting(22)#read_timeShut()
+        WorkOffset = int(module.read_setting(10))
+        WorkReload = int(module.read_setting(13))
+        YouNumber = module.read_setting(19)
+        CheckNum = int(module.read_setting(16))
+        WorkShut = module.read_setting(22)
      
     #Создаем само окно
         self.resize(495, 360)                            # Устанавливаем начальные размеры окна
@@ -207,12 +208,7 @@ class MainWindow(QWidget):
     # Инициализируем иконку Tray
         self.tray_icon = QSystemTrayIcon(self)
         self.tray_icon.setIcon(QIcon('icon\Bill_chipher.jpg')) #устанавливаем пользовательскую иконку
-        #self.tray_icon.setIcon(self.style().standardIcon(QStyle.SP_ComputerIcon))   #устанавливаем одну из стандартных иконку
-        '''
-            Объявим и добавим действия для работы с иконкой системного трея
-            show - показать окно
-            exit - выход из программы
-        '''
+
         show_action = QAction(QIcon('icon\Programming-Show.png'), "Настройки", self)
         quit_action = QAction(QIcon('icon\exit.png'), "Выход", self)
         show_action.triggered.connect(self.show)        #при нажатии на show окно открывается
@@ -247,139 +243,6 @@ class MainWindow(QWidget):
         self.lblSh.setToolTip('Если ваше время выхода на КПП после этого времени, выключаю компьютер')
         self.leshut.setToolTip('Введите время в формате:\n00:00')
         self.tray_icon.setToolTip('Отслеживаю Ваше рабочее время')
-        #self.show()    #показываем окно/показывать будем в основном модуле
-
-    #диалоговое окно выбора нового файла
-    def getfile(self):
-        dir_path = module.read_setting(4) + '/' + module.read_setting(1)
-        fname = QFileDialog.getOpenFileName(self, 'Выбрать файл', dir_path, 'Exel files (*.xls)')
-        #если новый файл выбран, переписываем путь в настройках и в наших текстовых виджетах
-        if fname != ('', ''):
-            new_dir = os.path.dirname(fname[0])    #путь папки в которой лежит файл
-            new_name = os.path.basename(fname[0])   #имя файла
-            #запись в настроечный файл нового имени файла
-            module.write_setting(new_name, 1)
-            #запись в настроечный файл нового пути
-            module.write_setting(new_dir, 4)
-            self.le.setText(fname[0])
-            self.lblN.setText('Настройки файла ' + new_name)
-            self.lblN.adjustSize()
-        
-    #диалоговое окно сохранения нового файла
-    def savefile(self):
-        dir_path = module.read_setting(4) + '/' + module.read_setting(1)
-        fname = QFileDialog.getSaveFileName(self, 'Выбрать файл', dir_path, 'Exel files (*.xls)')
-        #если новый файл выбран, переписываем путь в настройках и в наших текстовых виджетах
-        if fname != ('', ''):
-            new_dir = module.save_setting(fname[0],'Repace')
-            if new_dir!=0:
-                module.log_info("save warning: %s"% new_dir)
-            self.le.setText(new_dir[0] + '/' + new_dir[1])
-            self.lblN.setText('Настройки файла ' + new_dir[1])
-            self.lblN.adjustSize()
-    
-    #сохраняем настройки с учетом того что введено в строку
-    def save_setting_btn(self):
-        #получаем путь к файлу, имя файла Exel и номер пользователя из нашего настроечного файла
-        WorkPath = module.read_setting(4)
-        WorkName = module.read_setting(1)
-        WorkNumb = module.read_setting(19)
-        WorkShut = module.read_setting(22)
-
-        dir_path = self.le.text()   #получаем путь к новому файлу
-        you_numb = self.lenum.text()
-        shut_time = self.leshut.text()
-        
-        
-        #сохраняем новй путь Exel файла в настроечный файл
-        if dir_path != '':
-            #если выбранный файл существует записываем в настройки путь к нему
-            if os.path.exists(dir_path):
-                #запись в настроечный файл нового имени файла
-                module.write_setting(os.path.basename(dir_path), 1)
-                #запись в настроечный файл нового пути
-                module.write_setting(os.path.dirname(dir_path), 4)
-            #если файла нет, тосздать его?
-            else:
-                reply = QMessageBox.question(self, 'Сообщение', 'Файл не найден.\nСоздать новый файл?', QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
-                #QMessageBox.warning(self, 'Предупреждение','Файл не найден.\nСоздать новый файл?')
-                # если нажато "Да", создаем файл и сохраняем его путь в настроечный файл
-                if reply == QMessageBox.Yes:
-                    module.new_timework_file(dir_path)
-                    #запись в настроечный файл нового имени файла
-                    module.write_setting(os.path.basename(dir_path), 1)
-                    #запись в настроечный файл нового пути
-                    module.write_setting(os.path.dirname(dir_path), 4)
-                #self.le.setText(WorkPath + '/' + WorkName)    #вернуть исходное значение пути
-        #если путь пустой выводим сообщение
-        else:
-            QMessageBox.warning(self, 'Предупреждение','Путь к файлу не может быть пустым')
-            self.le.setText(WorkPath + '/' + WorkName)
-        
-        #сохраняем значение из SpinBox в файл
-        module.write_setting(self.spb.value(),10)
-        module.write_setting(self.spblered.value(),13)
-        module.write_setting(self.spbO.value(), 7)
-        
-        #сохраняем новый номер пользователя в файл
-        if you_numb != '':
-            #если поле не пустое - записываем новое значение в файл
-            module.write_setting(you_numb,19)
-        else:
-            #иначе, выводим предупреждение
-            QMessageBox.warning(self, 'Предупреждение','Ваш номер не может быть пустым')
-            self.lenum.setText(WorkNumb)
-        
-        #сохраняем новое время выхода
-        if shut_time != '' and len(shut_time) == 5:
-            #если поле не пустое - записываем новое значение в файл
-            module.write_setting(shut_time,22)
-        elif (len(shut_time) < 5):
-            QMessageBox.warning(self, 'Предупреждение','Время должно иметь формат:\n00:00')
-            self.leshut.setText(WorkShut)
-        else:
-            #иначе, выводим предупреждение
-            QMessageBox.warning(self, 'Предупреждение','Время выключения не может быть пустым')
-            self.leshut.setText(WorkShut)
-        
-        #выводим предупреждение что новые настройки заработают после перезагрузки компа
-        #QMessageBox.warning(self, 'Предупреждение','Некоторые настройки вступят в силу после перезапуска программы')
-    
-    #открываем папку с вашим файлом
-    def opendirectory(self):
-        path_file = module.read_setting(4) + '/' + module.read_setting(1)
-        if os.name == 'nt':
-            os.startfile(os.path.dirname(path_file))    #открыть каталог с файлом
-            os.startfile(path_file)                     #запуск файла
-        else:
-            opener = "open"
-            subprocess.call([opener, path_file])
-        
-    #открываем подсказку для выяснения номера на сайте
-    def openhelp(self):
-        #откроем дочернее окно м инструкцией
-        self.w = AdjWindow()
-        self.w.show()
-        #self.w.exec()
-    
-    #когда текст меняется, пишем ":" во второй символ
-    def time_shutdow(self):
-        text = self.leshut.text()
-        print(text)
-        if (len(text) >= 3):
-            if text[2] != ':':
-                text = text[:2] + ':' + text[2:]
-                self.leshut.setText(text)
-    
-    #функция для перерасчета работы во всем Exel файле
-    def exel_recount(self):
-        #adjacent_classes.app_ProgressRecount()
-        self.thread_progress.start()
-
-    #функция выключения окна прогресса пересчета
-    def off_show_act(self):
-        self.act.hide()
-        print('выхожу2')
 
     #Функция для расположения виджетов в окне
     def layout_in_main(self):
@@ -442,6 +305,146 @@ class MainWindow(QWidget):
         qr.moveCenter(cp)                   # устанавливаем центр прямоугольника в центр экрана. Размер прямоугольника не изменяется.
         self.move(qr.topLeft())             # перемещаем верхнюю левую точку окна приложения в верхнюю левую точку прямоугольника qr, таким образом центрируя окно на нашем экране.
     
+
+    #диалоговое окно выбора нового файла
+    def getfile(self):
+        dir_path = module.read_setting(4) + '/' + module.read_setting(1)
+        fname = QFileDialog.getOpenFileName(self, 'Выбрать файл', dir_path, 'Exel files (*.xls)')
+        #если новый файл выбран, переписываем путь в настройках и в наших текстовых виджетах
+        if fname != ('', ''):
+            new_dir = os.path.dirname(fname[0])    #путь папки в которой лежит файл
+            new_name = os.path.basename(fname[0])   #имя файла
+            #запись в настроечный файл нового имени файла
+            module.write_setting(new_name, 1)
+            #запись в настроечный файл нового пути
+            module.write_setting(new_dir, 4)
+            self.le.setText(fname[0])
+            self.lblN.setText('Настройки файла ' + new_name)
+        
+    #диалоговое окно сохранения нового файла (не используется)
+    def savefile(self):
+        dir_path = module.read_setting(4) + '/' + module.read_setting(1)
+        fname = QFileDialog.getSaveFileName(self, 'Выбрать файл', dir_path, 'Exel files (*.xls)')
+        #если новый файл выбран, переписываем путь в настройках и в наших текстовых виджетах
+        if fname != ('', ''):
+            new_dir = module.save_setting(fname[0],'Repace')
+            if new_dir!=0:
+                module.log_info("save warning: %s"% new_dir)
+            self.le.setText(new_dir[0] + '/' + new_dir[1])
+            self.lblN.setText('Настройки файла ' + new_dir[1])
+            self.lblN.adjustSize()
+    
+    #сохраняем настройки с учетом того что введено в строку
+    def save_setting_btn(self):
+        #получаем путь к файлу, имя файла Exel и номер пользователя из нашего настроечного файла
+        WorkPath = module.read_setting(4)
+        WorkName = module.read_setting(1)
+        WorkNumb = module.read_setting(19)
+        WorkShut = module.read_setting(22)
+
+        dir_path = self.le.text()   #получаем путь к новому файлу
+        you_numb = self.lenum.text()
+        shut_time = self.leshut.text()
+        
+        #сохраняем новй путь Exel файла в настроечный файл
+        if dir_path != '':
+            #если выбранный файл существует записываем в настройки путь к нему
+            if os.path.exists(dir_path):
+                #запись в настроечный файл нового имени файла
+                module.write_setting(os.path.basename(dir_path), 1)
+                #запись в настроечный файл нового пути
+                module.write_setting(os.path.dirname(dir_path), 4)
+            #если файла нет, тосздать его?
+            else:
+                reply = QMessageBox.question(self, 'Сообщение', 'Файл не найден.\nСоздать новый файл?', QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
+                #QMessageBox.warning(self, 'Предупреждение','Файл не найден.\nСоздать новый файл?')
+                # если нажато "Да", создаем файл и сохраняем его путь в настроечный файл
+                if reply == QMessageBox.Yes:
+                    module.new_timework_file(dir_path)
+                    #запись в настроечный файл нового имени файла
+                    module.write_setting(os.path.basename(dir_path), 1)
+                    #запись в настроечный файл нового пути
+                    module.write_setting(os.path.dirname(dir_path), 4)
+                #self.le.setText(WorkPath + '/' + WorkName)    #вернуть исходное значение пути
+        #если путь пустой выводим сообщение
+        else:
+            QMessageBox.warning(self, 'Предупреждение','Путь к файлу не может быть пустым')
+            self.le.setText(WorkPath + '/' + WorkName)
+        
+        #сохраняем значение из SpinBox в файл
+        module.write_setting(self.spb.value(),10)
+        module.write_setting(self.spblered.value(),13)
+        module.write_setting(self.spbO.value(), 7)
+        
+        #сохраняем новый номер пользователя в файл
+        if you_numb != '':
+            #если поле не пустое - записываем новое значение в файл
+            module.write_setting(you_numb,19)
+        else:
+            #иначе, выводим предупреждение
+            QMessageBox.warning(self, 'Предупреждение','Ваш номер не может быть пустым')
+            self.lenum.setText(WorkNumb)
+        
+        #сохраняем новое время выхода
+        if shut_time != '' and len(shut_time) == 5:
+            #если поле не пустое - записываем новое значение в файл
+            module.write_setting(shut_time,22)
+        elif (len(shut_time) < 5):
+            QMessageBox.warning(self, 'Предупреждение','Время должно иметь формат:\n00:00')
+            self.leshut.setText(WorkShut)
+        else:
+            #иначе, выводим предупреждение
+            QMessageBox.warning(self, 'Предупреждение','Время выключения не может быть пустым')
+            self.leshut.setText(WorkShut)
+        
+        #выводим предупреждение что новые настройки заработают после перезагрузки компа
+        QMessageBox.warning(self, 'Предупреждение','Некоторые настройки вступят в силу после перезапуска программы')
+    
+    #открываем папку с вашим файлом
+    def opendirectory(self):
+        path_file = module.read_setting(4) + '/' + module.read_setting(1)
+        if os.name == 'nt':
+            os.startfile(os.path.dirname(path_file))    #открыть каталог с файлом
+            os.startfile(path_file)                     #запуск файла
+        else:
+            opener = "open"
+            subprocess.call([opener, path_file])
+        
+    #открываем подсказку для выяснения номера на сайте
+    def openhelp(self):
+        #откроем дочернее окно с инструкцией
+        self.w = AdjWindow()
+        self.w.show()
+    
+    #когда текст меняется, пишем ":" во второй символ
+    def time_shutdow(self):
+        text = self.leshut.text()
+        print(text)
+        if (len(text) >= 3):
+            if text[2] != ':':
+                text = text[:2] + ':' + text[2:]
+                self.leshut.setText(text)
+    
+    #функция для перерасчета работы во всем Exel файле
+    def exel_recount(self):
+        #запускаем поток с отображение прогресса пересчета
+        self.thread_progress.start()
+    
+                
+    #если пересчет не удался показываем предупреждение
+    def do_not_rec(self):
+        #module.log_info("exel_recount exception: %s" % e)
+        message = 'Ошибка пересчета файла\nПожалуйста проверьте, что:\n    - файл составлен корректно (имеет все названия месяцев, все времена прихода и ухода)\n    - файл закрыт\nИ повторите попытку'
+        reply = QMessageBox.warning(self, 'Ошибка', message, QMessageBox.Retry | QMessageBox.Cancel, QMessageBox.Retry)
+        # если нажато "Повтор", запускаемся еще раз
+        if reply == QMessageBox.Retry:
+            self.exel_recount()
+    
+    #функция выключения окна прогресса пересчета
+    def off_show_act(self):
+        self.act.hide()
+        print('выхожу2')
+
     #действия при выборе подсчета времени с сайта
     def webtime(self, state):
         chtext = 'Теперь время вашего прихода и ухода берется с сайта.\nВаш компьютер автоматически запишет время вашего ухода в файл и\nвыключится!'
@@ -466,7 +469,6 @@ class MainWindow(QWidget):
             self.spblered.setValue(WorkReload)   #обнуляем reload
             
             #записываем в файл состояние виджета
-            print(841)
             module.write_setting('1',16)
         #если checkbox сбросили
         else:
@@ -475,7 +477,6 @@ class MainWindow(QWidget):
             self.spb.setEnabled(True)      #делаем виджет ввода смещеня активным
             self.spblered.setEnabled(True)
             #записываем в файл состояние виджета
-            print(842)
             module.write_setting('0',16)
        
     # действие по нажатию на кнопку 'X'
@@ -486,22 +487,22 @@ class MainWindow(QWidget):
         setting_offset = int(module.read_setting(10))
         setting_reload = int(module.read_setting(13))
         setting_number = int(module.read_setting(19))
-        print(333331)
+        
         dir_path = self.le.text()
         work_offset = int(self.spb.value())
         work_reload = int(self.spblered.value())
         you_number = int(self.lenum.text())
-        print(333332)
+        
         if (dir_path != setting_dir_path) or (work_offset != setting_offset) or (you_number != setting_number) or (work_reload != setting_reload):
             reply = QMessageBox.question(self, 'Сообщение', "Вы хотите сохранить настройки?", QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
             # если нажато "Да", сохраняем файл подтверждаем закрыти
             if reply == QMessageBox.Yes:
                 self.save_setting_btn()
-        print(333333)
+
         #сворачиваем приложение в Tray
         event.ignore()                          #игнорируем выход из программы
         self.hide()                             #скрываем программу
-        print(333334)
+
         self.tray_icon.showMessage(             #выводим сообщение
                 "System Tray",
                 "Программа свернута",
@@ -513,16 +514,12 @@ class MainWindow(QWidget):
     
     #выход из программы
     def cleanUp(self):
-    #def work_exit(self):
-        #записываю в лог файл
-        module.log_info('Выключаюсь!!!')
         #сохраняем в Exel файл время выхода
         print(111110)
         work_time.quit_app()
-        print(111111)
+
         #убираем иконку из Tray
         self.tray_icon.hide()
-        print(111112)
         
         #выключаю поток
         self.thread.quit()
@@ -533,17 +530,11 @@ class MainWindow(QWidget):
 class AdjWindow(QDialog):
    
     def __init__(self):
-        # Метод super() возвращает объект родителя класса MainWindow и мы вызываем его конструктор.
-        # Метод __init__() - это конструктор класса в языке Python.
         super(AdjWindow, self).__init__()
-        #создаем пвлитру окна
-        #appearance = self.palette()
-        #appearance.setColor(QPalette.Normal, QPalette.Window, QColor("white"))
                   
         self.resize(350,500)                                # Устанавливаем фиксированные размеры окна
         self.setWindowTitle("Как узнать свой индивидуальный номер")  # Устанавливаем заголовок окна
         self.setWindowIcon(self.style().standardIcon(QStyle.SP_TitleBarContextHelpButton))   #устанавливаем одну из стандартных иконку
-        #self.setPalette(appearance)                         #Применяем палитру к нашему окну
         
         text = module.read_help()
         #чтобы наше поле занимало все окно
@@ -551,9 +542,8 @@ class AdjWindow(QDialog):
         #создаем поле с текстом инструкции и ссылкой
         self.pole_vivod = QTextBrowser(self)
         self.pole_vivod.setFont(QFont('Arial', 14))        #Шрифт
-        self.pole_vivod.anchorClicked['QUrl'].connect(self.linkClicked)
+        self.pole_vivod.anchorClicked['QUrl'].connect(self.linkClicked)     #по клику открываем ссылку в браузере
         self.pole_vivod.setOpenLinks(False)     #Запрет удаления ссылки
-        #self.pole_vivod.move(0, 0)
         self.vbox.addWidget(self.pole_vivod)
         self.setLayout(self.vbox)
         
@@ -565,11 +555,10 @@ class AdjWindow(QDialog):
         webbrowser.open(url.toString()) 
 
 #открываем наше окно
-#if __name__ == '__main__':
 def app_main():
     app = QApplication(sys.argv)
     ex = MainWindow()
-    #app.aboutToQuit(sys.exit(0))
-    ex.show()                   #не забыть закоментировать
+    ex.thread.start()
+    #ex.show()                   #не забыть закоментировать
     print(12345678)
     sys.exit(app.exec_())

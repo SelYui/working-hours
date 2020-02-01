@@ -65,7 +65,7 @@ def new_timework_file(path):
     f = open(path, 'w')
     f.close()
 
-#сохранение в файл
+#сохранение в файл (не используется)
 def save_setting(new_path, mode):
     
     old_WorkPath = read_setting(4)              #читаем старое значение пути

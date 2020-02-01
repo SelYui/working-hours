@@ -15,13 +15,13 @@ url_mars = 'http://www.mars/asu/report/enterexit/'
 #на этом сайте хранится время прихода
 url = 'getinfo.php'
 
-#функция для получения строки с моими данными с сайта Марса
+#функция для получения строки с данными с сайта Марса
 def you_split_time(my_data):
     #отправляем запрос на получение данных для определенного работника
     try:
         rp = requests.post(url_mars+url, data = my_data)
     except:
-        return 1
+        return -1
     lines = rp.text
     #удаляем ненужные символы из ответа
     for i in range(len(symbol)):
@@ -30,7 +30,7 @@ def you_split_time(my_data):
     lines = lines.split()
     #проверяем наличие человека
     if len(lines) < 7:
-        return 2
+        return -2
     
     return lines
 
@@ -43,25 +43,27 @@ def came_left(lines, timestart, timeexit):
             start_tek = lines[count]
             timestart.append(start_tek[:5]) #записываем только часы и минуты
         except IndexError:
-            return 1
+            return -1
     
         #время первого ухода
         try:
             exit_tek = lines[count+1]
             timeexit.append(exit_tek[:5])   #записываем только часы и минуты
         except IndexError:
-            return 2
+            return -2
     
         count = count+3
     
     return count
 
+#основная функция для работы с данными с сайта
 def web_main():
     #return True
     #получаем дату с сайта
     date = url_date()
-    if date == 1:
-        module.log_info('нет такого сайта')
+    if date == -1:
+        module.log_info('на сайте дата не найдена')
+        #используем двту компьютера
         data = datetime.datetime.now()
         tekyear = data.year   #Текущий год
         tekmonth = data.month #текущий месяц
@@ -70,28 +72,27 @@ def web_main():
         tekday = int(date[8:10])    #текущий день
         tekmonth = int(date[5:7])   #текущий месяц
         tekyear = int(date[0:4])    #текущий год
-        print(date, tekday, tekmonth, tekyear)
+    print(date, tekday, tekmonth, tekyear)
     
     #получаем время после которого выключим компьютер
     max_timE = module.read_setting(25)
-    #начальные условия
+    #составляем запрос для сайта
     name_id = module.read_setting(19)
     my_data = {'type': 'search', 'info': name_id}
     
     while True:
         print(10)
         #также записываем текущее время в файл, что бы в случае сбоя записать его в Exel файл
-        #получаем текущее время
-        timeExit = datetime.datetime.now()
+        timeExit = datetime.datetime.now()      #получаем текущее время
         #записываем текущее время в файл
-        module.write_setting(timeExit.strftime("%d %m %Y %H:%M"),25)
-        
+        module.write_setting(timeExit.strftime("%d %m %Y %H:%M"), 25)
+        #обнуляем массивы перед чтением с сайта
         timestart = []
         timeexit = []
         lines = you_split_time(my_data)
-        if lines == 1:
+        if lines == -1:
             module.log_info('сервер не отвечает')
-        elif lines == 2:
+        elif lines == -2:
             msg = ('пропуск человека с номером', name_id, 'не пробит')
             module.log_info(msg)
         else:
@@ -100,19 +101,18 @@ def web_main():
             #получаем массивы прихода - ухода
             status_availability = came_left(lines, timestart, timeexit)
 
-            #timeexit = ['18:40']
+            #timeexit = ['18:40']        #ДЛЯ ОТЛАДКИ
         
             #записываем массив времен прихода (если вдруг комп включили после нескольких заходов на марс)
             for i in range(len(timestart)):
                 print('cycl = ',i, len(timestart))
-                #получаем последнее время прихода, записываем его в Exel
+                #получаем время прихода, записываем его в Exel
                 try:
                     timeS = timestart[i]
                     #записываем время прихода на работу
                     work_time.start_work(int(timeS[3:5]), int(timeS[0:2]), tekday, tekmonth, tekyear)
                 except:
-                    msg = ('не удалось записать время прихода')
-                    module.log_info(msg)
+                    module.log_info('не удалось записать время прихода')
                 print(12)
                 try:
                     print(13)
@@ -121,20 +121,19 @@ def web_main():
                     work_time.exit_work(int(timeE[3:5]), int(timeE[0:2]), tekday, tekmonth, tekyear)
                 except:
                     print(14)
-                    msg = ('не удалось записать время ухода')
-                    module.log_info(msg)
+                    module.log_info('не удалось записать время ухода')
                 print(timestart, timeexit)
                 print('end_cycl')
                 i=i+1
 
             try:
-                #условие выключения компьютера
+                #проверяем условие выключения компьютера
                 if(timeexit[-1] > max_timE):
                     print("Выключаюсь")
                     #выставляем признак завершения (для потока с таймером завершения)
                     return True
                 else:
-                    print("Не выключаюсь")
+                    None
             except:
                 None
             print(11)
@@ -145,7 +144,7 @@ def url_date():
     try:
         rp = requests.post(url_mars)     #копируем сайт
     except:
-        return 1
+        return -1
     lines = rp.text                 
     num = lines.find(datemass)      #ищем строку с датой
     return lines[num+47:num+57]     #выделяем дату

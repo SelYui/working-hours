@@ -24,7 +24,7 @@ def start_work(tekminute, tekhour, tekday, tekmonth, tekyear):
     wt_filename = module.read_setting(4) + '/' + module.read_setting(1)
     min_offset = int(module.read_setting(10))
     #обнуление начальных условий
-    flg_dontdata = 0    #обнуляем признак незаполнения даты
+    flg_dontdata = False    #обнуляем признак незаполнения даты
     
     #вычитаем смещение из минут
     if tekminute - min_offset >= 0:
@@ -88,7 +88,7 @@ def start_work(tekminute, tekhour, tekday, tekmonth, tekyear):
                     return
                     
                 #не заполняем дату (признак незаполнения)
-                flg_dontdata = 5826
+                flg_dontdata = True
                 i = sheet_nrows
             #началась новая неделя
             else:
@@ -107,7 +107,7 @@ def start_work(tekminute, tekhour, tekday, tekmonth, tekyear):
         i=i+1
     
     #заполняем строку датой
-    if flg_dontdata != 5826:
+    if flg_dontdata == False:
         if tekday < 10 and tekmonth < 10:
             write_book.get_sheet(sheet_index).write(i,0,'0'+str(tekday)+'.0'+str(tekmonth)+'.'+str(tekyear))
         elif tekday < 10 and tekmonth >= 10:
@@ -126,8 +126,8 @@ def start_work(tekminute, tekhour, tekday, tekmonth, tekyear):
     else:
         write_book.get_sheet(sheet_index).write(i,1,str(tekhour)+':'+str(tekminute))
 
-    #если сейчас число больше 15, а предыдущее меньше либо равно, то вычисляем отработанное время в авансе
-    if tekday > 15 and int(dd) <= 15:
+    #вычисляем отработанное время в авансе
+    if tekday >= 15 and int(dd) < 15:
         #вычисляем сумму в этом месяце
         i = sheet_nrows-1
         #ищем наименование месяца в файле
@@ -164,7 +164,6 @@ def exit_work(tekminute, tekhour, tekday, tekmonth, tekyear):
     tekhour = tekdateandtime.hour   #текущий час
     tekminute = tekdateandtime.minute    #текущая минута
     '''
-
     #получаем путь к файлу и смещение
     wt_filename = module.read_setting(4) + '/' + module.read_setting(1)
     min_offset = int(module.read_setting(10))
@@ -239,6 +238,7 @@ def exit_work(tekminute, tekhour, tekday, tekmonth, tekyear):
     else:
         write_book.get_sheet(sheet_index).write(i,2,str(tekhour)+':'+str(tekminute))
     
+    '''
     #вычисляем количество рабочих часов в сегодняшнем дне
     i = sheet.nrows-1
     sum_timework = 0
@@ -269,9 +269,9 @@ def exit_work(tekminute, tekhour, tekday, tekmonth, tekyear):
         sum_timework = sum_timework + timework
         count_cycle = count_cycle+1
         i = i-1
-
     #округляем до 3его знака
     sum_timework = round(sum_timework,3)
+    
     #заполняем строку часов
     write_book.get_sheet(sheet_index).write(time_date_index,3,str(sum_timework))
     #вычисляем количество рабочих часов в текущем месяце
@@ -303,14 +303,26 @@ def exit_work(tekminute, tekhour, tekday, tekmonth, tekyear):
         write_book.save(wt_filename)
     except Exception as e:
         module.log_info("Не удалось сохранить в Exel время ухода. Exception: %s" % str(e))
+    '''
+        
+    #получаем массив дней в месяце
+    day_in_mount = arr_day_month(tekmonth, tekyear)
+    #получаем номер середины месяца для подсчета аванса
+    num_center_day = center_month(day_in_mount)
+    #получаем количество часов в месяце и до аванса, и массив часов работы в дне
+    sum_month = month_recount(day_in_mount, num_center_day)
+    #записываем в Exel
+    if write_sum_month(sum_month[0], sum_month[1], num_center_day, sum_month[2], tekmonth, tekyear) == False:
+        module.log_info("Не удалось сохранить в Exel время прихода.")
+
 
 #если комп выключался не на долгото не заполняем время прихода (возвращаем заполнять или не заполнять)
 def pc_reload(timeexit, starthour, startminute):
     reload = int(module.read_setting(13))
     #если строка пустая, выходим из программы, такого не должно быть
     if timeexit == '':
-        module.log_info("pc reload = 2")
-        return 2    #неизвестная ошибка - продолжаем работу
+        module.log_info("pc reload = -2")
+        return -2    #неизвестная ошибка - продолжаем работу
     else:
         hour_e = timeexit[0:2]      #часы
         minut_e = timeexit[3:5]     #минуты
@@ -358,18 +370,9 @@ def time_compare(sheet_nrows, sheet, j, tekhour, tekminute, time_date_index):
 def quit_app():
     #получаем текущую дату и время компа
     tekdateandtimeExit = datetime.datetime.now()
-    '''
-    tekyear = tekdateandtimeExit.year   #Текущий год
-    tekmonth = tekdateandtimeExit.month #текущий месяц
-    tekday = tekdateandtimeExit.day     #текущее число
-    tekhour = tekdateandtimeExit.hour   #текущий час
-    tekminute = tekdateandtimeExit.minute    #текущая минута
-    '''
-    #дату записываем время выключения компьютера в файл
-    module.write_setting(tekdateandtimeExit.strftime("%d %m %Y %H:%M"), 25)
     
-    #записываем время выключения компьютера
-    #exit_work(tekminute, tekhour, tekday, tekmonth, tekyear)
+    #записываем время выключения компьютера в настроечный файл
+    module.write_setting(tekdateandtimeExit.strftime("%d %m %Y %H:%M"), 25)
 
 #записываем в Exel файл время последнего выключения компьютера
 def write_exit():
@@ -384,7 +387,7 @@ def write_exit():
     else:
         msg = "dtimE = %s"% dtimE
         module.log_info(msg)
-
+###############################################################################################
 #получаем лист из Exel файла
 def year_sheet(year):
     #получаем путь к файлу и смещение
@@ -430,7 +433,6 @@ def arr_time_day(day, month, year):
     sheet = exel_sheet[0]
     #строковая заданная дата и следующая
     dan_date = str_date(day, month, year)
-    next_date = str_date(day+1, month, year)
     
     #ищем наименование заданного дня в файле
     i = sheet.nrows-1
@@ -502,14 +504,12 @@ def time_in_day(timestart, timeexit):
     for i in range(len(timestart)):
         try:
             sum_time += (timeexit[i] - timestart[i])
-        except Exception as e:
-            #print('time_in_day 1 = %s', e)
+        except:
             None
         #вычисляем обед
         try:
             diner_time += (timestart[i+1] - timeexit[i])
-        except Exception as e:
-            #print('time_in_day 2= %s', e)
+        except:
             None
     #вычитаем обед из отработанных часов
     if diner_time > diner/60:
@@ -521,14 +521,6 @@ def time_in_day(timestart, timeexit):
 
 #функция для получения массива дней в месяце
 def arr_day_month(month, year):
-    date = datetime.datetime.now()
-    tekmonth = date.month #текущий месяц
-    
-    #если пересчитываемый месяц больше текущего
-    #if month > tekmonth:
-    #    module.log_info('mount_recount: неверный месяц %s' %month)
-    #    return 1
-
     #выбираем активным лист с нашим годом
     exel_sheet = year_sheet(year)
     sheet = exel_sheet[0]
@@ -640,9 +632,9 @@ def year_recount(year):
         sum_month = month_recount(day_in_mount, num_center_day)
         print('sum_month =', sum_month, len(sum_month))
         #записываем в Exel 
-        if(write_sum_month(sum_month[0], sum_month[1], num_center_day, sum_month[2], year_month[i], year) == 1):
-            return 1
-    return 0    
+        if(write_sum_month(sum_month[0], sum_month[1], num_center_day, sum_month[2], year_month[i], year) == False):
+            return False
+    return True    
 
 #запись в Exel файл массива часов работы в месяце и массива часов работы по дням в месяце
 def write_sum_month(sum_month, sum_cnt_month, num_cnt_day, day_in_mount, month, year):
@@ -660,7 +652,7 @@ def write_sum_month(sum_month, sum_cnt_month, num_cnt_day, day_in_mount, month, 
     except:
         #если листа текущего года нет значит программа start не сработала
         module.log_info('year_sheet: в Exel файле отсутствует страница %s' %year)
-        return 1
+        return False
     
     #выбираем активным лист с нашим годом
     sheet = read_book.sheet_by_index(sheet_index)
@@ -686,7 +678,7 @@ def write_sum_month(sum_month, sum_cnt_month, num_cnt_day, day_in_mount, month, 
             write_book.get_sheet(sheet_index).write(i_day,3,str(day_in_mount[i]))
             #записываем отработанное кол-во часов до аванса
             if i == num_cnt_day:
-                write_book.get_sheet(sheet_index).write(i_day,4,str(sum_cnt_month))
+                write_book.get_sheet(sheet_index).write(i_day,4,'('+ str(sum_cnt_month)+')')
             i_day=i_day+1
             i = i+1
     
@@ -695,8 +687,8 @@ def write_sum_month(sum_month, sum_cnt_month, num_cnt_day, day_in_mount, month, 
         write_book.save(wt_filename)
     except Exception as e:
         module.log_info("Не удалось сохранить в Exel. Exception: %s" % str(e))
-        return 1
-    return 0
+        return False
+    return True
 
 #функция для получения массива с годами, хранящимися в exel файле
 def exel_year():

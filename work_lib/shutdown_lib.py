@@ -8,13 +8,14 @@ import time, datetime
 from work_setting import module
 from work_lib import work_time
 
+'''
 if os.name == "nt":
     import win32con
     import win32api
     import win32gui
 else:
     import signal
-    
+   
 class MyWindow:
     def __init__(self):
         win32gui.InitCommonControls()
@@ -72,7 +73,7 @@ def shutdown_lib():
         while True:
             #signal.signal(signal.SIGTERM, MyWindow().OnDestroy)
             time.sleep(1)
-
+'''
 #выключение компьютера
 def signal_shutdown():
     if os.name == 'nt':

@@ -38,24 +38,21 @@ class ShowShutOrWeb(QObject):
             tekday = tekdateandtimeStart.day     #текущее число
             tekhour = tekdateandtimeStart.hour   #текущий час
             tekminute = tekdateandtimeStart.minute    #текущая минута
-            #записываем в Exel файл время последнего выключения компьютера
-            work_time.write_exit()
     
             #записываем время включения компьютера
             work_time.start_work(tekminute, tekhour, tekday, tekmonth, tekyear)
             
-            #запускаем бесконечный цикл для опроса сигналов виндовс
-            #shutdown_lib.shutdown_lib()
-            #2ой вариант, просто записываем каждую минуту в файл текущее время (так тратим меньше ресурсов и не надо "ловить" выключение компьютера)
+            #просто записываем каждую минуту в файл текущее время (так тратим меньше ресурсов и не надо "ловить" выключение компьютера)
             while True:
+                print(11)
                 #получаем текущее время
                 timeExit = datetime.datetime.now()
                 #записываем текущее время в файл
-                module.write_setting(timeExit.strftime("%d %m %Y %H:%M"),25)
+                module.write_setting(timeExit.strftime("%d %m %Y %H:%M"), 25)
                 time.sleep(60)
             self.finished_global.emit()
 
-    #если функция вернет 1234, то запустим окно с таймером на выключение ПК
+    #если функция вернет флаг выключения, то запустим окно с таймером на выключение ПК
     @pyqtSlot()
     def RunWeb(self):
         print(12345)
@@ -69,7 +66,7 @@ class ShowShutOrWeb(QObject):
             print(4564)
             shutdown_lib.signal_shutdown()
     
-    #Основной метод счетчика
+    #Основной метод счетчика выключения
     @pyqtSlot()
     def CountTime(self):
         self.show_wnd.emit()
@@ -86,8 +83,6 @@ class ShowShutOrWeb(QObject):
 class ShutWindow(QWidget):
    
     def __init__(self):
-        # Метод super() возвращает объект родителя класса MainWindow и мы вызываем его конструктор.
-        # Метод __init__() - это конструктор класса в языке Python.
         super(ShutWindow, self).__init__()
 
         #запуск формы
@@ -97,27 +92,22 @@ class ShutWindow(QWidget):
         
         self.resize(200,200)                                # Устанавливаем фиксированные размеры окна
         self.setWindowFlags(Qt.FramelessWindowHint|Qt.WindowStaysOnTopHint)         # окно без рамки
-        #self.setWindowOpacity(0.6)
         self.setAttribute(Qt.WA_TranslucentBackground)                          #окно прозрачное
         
         self.lbl = QLabel(self)                 #лейбл приветствия
         self.lbl.setFont(QFont('Arial', 12))        #Шрифт
         self.lbl.setText('До выключения остальсь:')
-        #self.lbl.move(5, 10)                      #расположение в окне
         self.lbl.adjustSize()                           #адаптивный размер в зависимости от содержимого
         
         self.lbl_timer = QLabel(self)                   #лейбл со счетчиком
         self.lbl_timer.setFont(QFont('Arial', 150))        #Шрифт
         self.lbl_timer.setText('60')
-        #self.lbl_timer.move(25, 20)                      #расположение в окне
-        #self.lbl_timer.adjustSize()                           #адаптивный размер в зависимости от содержимого
         self.lbl_timer.setStyleSheet('color: red')                 #цвет текста красный
         
         self.btn_stop = QPushButton('Остановить\nвыключение', self) #остановки счетчика
         self.btn_stop.setFont(QFont('Arial', 12))        #Шрифт
-        #self.btn_stop.move(50, 150)                      #расположение в окне кнопки
         self.btn_stop.clicked.connect(self.close_programm)      #действие по нажатию
-        
+        #расположение в окне
         self.v_box = QVBoxLayout()
         self.v_box.addWidget(self.lbl)
         self.v_box.addWidget(self.lbl_timer)
@@ -125,38 +115,28 @@ class ShutWindow(QWidget):
         
         self.setLayout(self.v_box)
     
+    #запись счетчика в лейбл
     def onShutReady(self, count):
         self.lbl_timer.setText(str(count).rjust(2, '0'))
         print(count)
-    
+    #отображение окна по сигналу
     def on_show_wnd(self):
         self.show()
-    
-    #по нажатию кнопки 
+    #по нажатию кнопки выключаем программу
     def close_programm(self):
         ex = dialog.MainWindow()
         ex.cleanUp()
-        #сам выход
-        #sys.exit(0)
-'''     
-#вызываем окно с таймером (вроде не нужно)
-def app_ShutWindow():
 
-    app = QApplication(sys.argv)
-    ex = ShutWindow()
-    ex.show()
-    
-    sys.exit(app.exec_())       
-'''
 ##############################################################################################################
 #объекты для потока с расчетом прогресса пересчета
 class ThreadProgressRecount(QObject):
     finished = pyqtSignal()
     show_act = pyqtSignal()
     count_changed = pyqtSignal(int)          #сигнал для вывода прогресса перезаписи
+    not_recount = pyqtSignal()
     finished_progress = pyqtSignal()
     
-        #функция для подсчета прогресса пересчета Exel файла
+    #функция для подсчета прогресса пересчета Exel файла
     def ThreadRecount(self):
         print(741)
         self.CountRecount()
@@ -174,18 +154,14 @@ class ThreadProgressRecount(QObject):
         for i in range(len(exel_year)):
             result = work_time.year_recount(int(exel_year[i]))
             print('result = ', result)
-            '''
-            if result == 1:
-                #module.log_info("exel_recount exception: %s" % e)
-                message = 'Ошибка пересчета файла\nПожалуйста проверьте, что:\n    - файл составлен корректно (имеет все названия месяцев, все времена прихода и ухода)\n    - файл закрыт\nИ повторите попытку'
-                reply = QMessageBox.warning(self, 'Ошибка', message, QMessageBox.Retry | QMessageBox.Cancel, QMessageBox.Retry)
-                # если нажато "Повтор", запускаемся еще раз
-                if reply == QMessageBox.Retry:
-                    self.run()
-            '''
+            #если пересчет не удался
+            if result == False:
+                self.not_recount.emit()
+                break
+            
             count = count + step
             self.count_changed.emit(count)
-        #self.countChanged.emit(100)
+        
         print('Пересчитал2')
         self.finished.emit()
         self.finished_progress.emit()
@@ -194,6 +170,7 @@ class ThreadProgressRecount(QObject):
 class ProgressRecount(QDialog):
     def __init__(self):
         super().__init__()
+        
         self.initUI()
         
     def initUI(self):
@@ -216,6 +193,7 @@ class ProgressRecount(QDialog):
         self.pbar.setValue(value)
         if value >= 100:
             print('Пересчитал', value)
+        
     #показываем окно, блокируя другие
     def on_show_act(self):
         self.exec()
