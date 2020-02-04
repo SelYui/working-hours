@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 '''
-класс для вывода акна с настройками
+Класс для вывода акна с настройками
 '''
-import os, sys, subprocess, time, webbrowser
+import os, sys, subprocess, webbrowser
 from work_setting import module, adjacent_classes
-from work_lib import work_time, web_time
+from work_lib import work_time
 
-from PyQt5.QtWidgets import (QMainWindow, QPushButton, QLineEdit, QLabel, QDesktopWidget, QToolTip, QSystemTrayIcon, QProgressBar, QDialog,
-    QMessageBox, QAction, QFileDialog, QApplication, QMenu, QSpinBox, QCheckBox, QWidget, QStyle, QTextBrowser, QHBoxLayout, QVBoxLayout, QGridLayout)
+from PyQt5.QtWidgets import (QPushButton, QLineEdit, QLabel, QDesktopWidget, QToolTip, QSystemTrayIcon, QDialog, QMessageBox, QAction,
+    QFileDialog, QApplication, QMenu, QSpinBox, QCheckBox, QWidget, QStyle, QTextBrowser, QHBoxLayout, QVBoxLayout, QGridLayout)
 from PyQt5.QtGui import QIcon, QFont, QTextCursor
-from PyQt5.QtCore import Qt, QSize, QBasicTimer, QThread
+from PyQt5.QtCore import Qt, QThread
 from PyQt5.Qt import QIntValidator, QRegExp, QRegExpValidator
 
 url_mars = 'http://www.mars/asu/report/enterexit/'
@@ -419,7 +419,6 @@ class MainWindow(QWidget):
     #когда текст меняется, пишем ":" во второй символ
     def time_shutdow(self):
         text = self.leshut.text()
-        print(text)
         if (len(text) >= 3):
             if text[2] != ':':
                 text = text[:2] + ':' + text[2:]
@@ -443,7 +442,6 @@ class MainWindow(QWidget):
     #функция выключения окна прогресса пересчета
     def off_show_act(self):
         self.act.hide()
-        print('выхожу2')
 
     #действия при выборе подсчета времени с сайта
     def webtime(self, state):
@@ -481,7 +479,6 @@ class MainWindow(QWidget):
        
     # действие по нажатию на кнопку 'X'
     def closeEvent(self, event):
-        print(333330)
         #если путь в строке не совпадает с тем что записан в настроечном файле
         setting_dir_path = module.read_setting(4) + '/' + module.read_setting(1)
         setting_offset = int(module.read_setting(10))
@@ -510,12 +507,10 @@ class MainWindow(QWidget):
                 1
             )
         #event.accept()                          #'''не забыть закоментировать!!!!'''
-        print(333335)
     
     #выход из программы
     def cleanUp(self):
         #сохраняем в Exel файл время выхода
-        print(111110)
         work_time.quit_app()
 
         #убираем иконку из Tray
@@ -560,5 +555,4 @@ def app_main():
     ex = MainWindow()
     ex.thread.start()
     #ex.show()                   #не забыть закоментировать
-    print(12345678)
     sys.exit(app.exec_())

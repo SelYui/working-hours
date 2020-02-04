@@ -57,7 +57,6 @@ def start_work(tekminute, tekhour, tekday, tekmonth, tekyear):
         #т.к. страница пустая
         sheet_nrows = 0
         sheet_ncols = 0
-    print('start', sheet_nrows)
     #если лист не пустой, будем писать в конец
     if (sheet_nrows and sheet_ncols) != 0:
         #получаем последнюю дату
@@ -194,8 +193,6 @@ def exit_work(tekminute, tekhour, tekday, tekmonth, tekyear):
     
     #выбираем активным лист с нашим годом
     sheet = read_book.sheet_by_index(sheet_index)
-    print('sheet123 = ', sheet)
-    print('exit', sheet.nrows)
     #получаем последнюю дату
     i = sheet.nrows-1
     while i > 0:
@@ -227,7 +224,6 @@ def exit_work(tekminute, tekhour, tekday, tekmonth, tekyear):
     #сравниваем текущую дату прихода со вторым (j) столбцом
     if time_compare(sheet.nrows, sheet, 2, tekhour, tekminute, time_date_index) == 0:    #если такая дата уже записанна, то ничего не делаем
         return
-    print(10)
     #заполняем строку временем
     if tekhour < 10 and tekminute < 10:
         write_book.get_sheet(sheet_index).write(i,2,'0'+str(tekhour)+':0'+str(tekminute))
@@ -238,73 +234,12 @@ def exit_work(tekminute, tekhour, tekday, tekmonth, tekyear):
     else:
         write_book.get_sheet(sheet_index).write(i,2,str(tekhour)+':'+str(tekminute))
     
-    '''
-    #вычисляем количество рабочих часов в сегодняшнем дне
-    i = sheet.nrows-1
-    sum_timework = 0
-    count_cycle = 0
-    #пока не дошли до первой строки дня
-    while i >= time_date_index:
-        #получаем время прихода
-        time_start = sheet.row_values(i)[1]
-        #выделяем часы и минуты прихода
-        hr_start = time_start[0:2]  #часы
-        min_start = time_start[3:5]  #минуты
-        timestart = int(hr_start) + int(min_start)/60
-        #выделяем часы и минуты ухода
-        if (int(sheet.ncols) < 3) or (sheet.row_values(i)[2] == '') or (i == time_date_index):
-            hr_exit = tekhour  #часы
-            min_exit = tekminute  #минуты
-        else:
-            time_exit = sheet.row_values(i)[2]
-            hr_exit = time_exit[0:2]  #часы
-            min_exit = time_exit[3:5]  #минуты
-        timeexit = int(hr_exit) + int(min_exit)/60
-        #разность
-        timework = timeexit - timestart
-        #вычитаем обед. Если одна строка и рабочих часов больше 4, вычитаем час
-        if (i == time_date_index) and timework > 4 and count_cycle == 0:
-            timework = timework -1
-        #сумма рабочих часов в дне
-        sum_timework = sum_timework + timework
-        count_cycle = count_cycle+1
-        i = i-1
-    #округляем до 3его знака
-    sum_timework = round(sum_timework,3)
-    
-    #заполняем строку часов
-    write_book.get_sheet(sheet_index).write(time_date_index,3,str(sum_timework))
-    #вычисляем количество рабочих часов в текущем месяце
-    i = sheet.nrows-1
-    #ищем наименование месяца в файле
-    while sheet.row_values(i)[0] != month_word[tekmonth-1]:
-        i=i-1
-    #запоминаем строку, куда запишем сумму
-    index_sum = i
-    #суммируем все ячейки часов в месяце
-    i = time_date_index-1
-    #начальное значение отработанных часов - только что вычисленное значение
-    mount_sum = sum_timework
-    while i > int(index_sum):
-        #если пустая строка
-        if sheet.row_values(i)[3] == '':
-            i=i-1
-        else:
-            #получаем часы отработанные в дне
-            mount_sum = mount_sum + float(sheet.row_values(i)[3])
-            i=i-1
-    #округляем до 3его знака
-    mount_sum = round(mount_sum,3)
-    #заполняем сумму часов в соответствующую строку
-    write_book.get_sheet(sheet_index).write(index_sum,1,str(mount_sum))
-    
     #сохраняем запись
     try:
         write_book.save(wt_filename)
     except Exception as e:
-        module.log_info("Не удалось сохранить в Exel время ухода. Exception: %s" % str(e))
-    '''
-        
+        module.log_info("Не удалось сохранить в Exel. Exception: %s" % str(e))    
+    
     #получаем массив дней в месяце
     day_in_mount = arr_day_month(tekmonth, tekyear)
     #получаем номер середины месяца для подсчета аванса
@@ -337,33 +272,23 @@ def pc_reload(timeexit, starthour, startminute):
 #сравниваем время текущее с временем в Exel, если совпало или меньше, то не будем записывать
 def time_compare(sheet_nrows, sheet, j, tekhour, tekminute, time_date_index):
     shour = sminute = 0
-    print("я тута %s"%j)
     #получаем последнее время прихода
     i = sheet_nrows-1
-    print('timcomp', sheet_nrows)
-    print(i, time_date_index)
     #пока мы в текущем дне
     
     while (i >= time_date_index):#i > 0:
-        print(1)
         lastdate = sheet.row_values(i)[j]
-        print(2, lastdate)
         #если строка пустая, то ищем дату выше
         if lastdate == '':
-            print(3)
             i=i-1
         else:
-            print(4)
             shour = lastdate[0:2]  #день
             sminute = lastdate[3:5]  #месяц
             break
-    print(shour, sminute, i)
     #если время совпало с последним записанным временем - ничего не делаем. Выходим из программы
     if ((int(shour) == tekhour) and (int(sminute) >= tekminute)) or ((int(shour) > tekhour)):
-        print('вышел 0', shour, sminute, tekhour, tekminute)
         return 0    #текущая дата совпадает с последней записанной
     else:
-        print('вышел 1')
         return 1  #не совпадает
         
 #действия при выходе из программы по кнопке
@@ -382,7 +307,6 @@ def write_exit():
     #если приложение закрыл не пользователь
     if (dtimE != ''):
         timE = dtimE[-1]
-        print('записываю %s'%timE)
         exit_work(int(timE[3:5]), int(timE[0:2]), int(dtimE[0]), int(dtimE[1]), int(dtimE[2]))
     else:
         msg = "dtimE = %s"% dtimE
@@ -407,7 +331,6 @@ def year_sheet(year):
         return 0
     
     #выбираем активным лист с нашим годом
-    print('sheet0 = ', read_book.sheet_by_index(sheet_index))
     return read_book.sheet_by_index(sheet_index), write_book
 
 #функция получения массива времян в заданном дне
@@ -448,7 +371,6 @@ def arr_time_day(day, month, year):
             index_sumE = i-1      #запоминаем строку, c началом следующего месяца месяца
             break
         else: index_sumE = i    #или запоминаем конец строки, если следующего месяца нет
-    print(index_sumS, index_sumE)
     
     #обнуление времен
     timestart = []
@@ -467,8 +389,6 @@ def arr_time_day(day, month, year):
         else:
             timeexit.append(sheet.row_values(i)[2])
     #возвращаем массив времен
-    print('timestart =', timestart)
-    print('timeexit =', timeexit)
     return timestart, timeexit
 
 #перевод даты из int в str, в формате dd.mm.yyyy
@@ -511,12 +431,14 @@ def time_in_day(timestart, timeexit):
             diner_time += (timestart[i+1] - timeexit[i])
         except:
             None
-    #вычитаем обед из отработанных часов
-    if diner_time > diner/60:
-        sum_time = round(sum_time,3)
-    else:
-        sum_time = round(sum_time - (diner/60 - diner_time),3)
-    print('sum_time =', sum_time)    
+    
+    #если в дне отработано больше 4 часов - вычитаем обед из отработанных часов
+    sum_time = round(sum_time,3)
+    if sum_time > 4:
+        if diner_time > diner/60:
+            sum_time = round(sum_time,3)
+        else:
+            sum_time = round(sum_time - (diner/60 - diner_time),3)
     return sum_time
 
 #функция для получения массива дней в месяце
@@ -534,13 +456,11 @@ def arr_day_month(month, year):
     for i in range(index_sumS+1, sheet.nrows):
         for j in range(len(month_word)):
             if (sheet.row_values(i)[0] == month_word[j]):
-                print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
                 index_sumE = i-1      #запоминаем строку, c началом следующего месяца
                 break
             else:
                 index_sumE = i    #или запоминаем конец строки, если следующего месяца нет
         if (sheet.row_values(i)[0] == month_word[j]):
-            print('*********************************************')
             break
     
     #от начала месяца до конца массив дней в месяце
@@ -551,43 +471,39 @@ def arr_day_month(month, year):
         else:
             #записываем в массив дней в месяце
             month_day.append(sheet.row_values(i)[0])
-    print('month_day =', month_day)
     return month_day
 
 #функция для вывода номера дня аванса
 def center_month(month_day):
-    if len(month_day) > 1:
+    if len(month_day) >= 1:
         for i in range(1, len(month_day)):
             day_old = month_day[i-1]
             day = month_day[i]
             if (int(day[:2]) > 15) and (int(day_old[:2]) <= 15):
-                print('center_month = ', i-1)
                 return i-1
-            
-    return 0
+    else:
+        day = month_day[0]
+        if (int(day[:2]) >= 15):
+            return 0
+    return -1
 
 #Функция для подсчета часов в месяце
 def month_recount(month_day, num_cent_day):
     sum_month_time = 0
+    sum_center_month = 0
     sum_day_time = []
     time = []
-    print 
     for i in range(len(month_day)):
-        print('i=',i)
         #получаем массив времен в дне
         day = month_day[i]
         time = arr_time_day(int(day[:2]), int(day[3:5]), int(day[6:]))
         #если массив получен нормально, вычисляем сумму в месяце и массив рабочих часов в дне
-        print('time = ', time)
         if time != 1:
             day_time = time_in_day(time[0], time[1])
             sum_day_time.append(day_time)
             sum_month_time = sum_month_time + day_time
             if i == num_cent_day:
                 sum_center_month = sum_month_time
-    print('sum_month_time =', sum_month_time)   #сумма часов в месяце
-    print('sum_day_time =', sum_day_time)       #массив сумм часов в дне
-    print('sum_center_month =', sum_center_month)       #сумма часов в центре месяца
     return round(sum_month_time, 3), round(sum_center_month, 3), sum_day_time
 
 #Функция получения массива месяцев
@@ -620,17 +536,14 @@ def arr_month_year(year):
 def year_recount(year):
     #получаем массив месяцев
     year_month = arr_month_year(year)
-    print('year_month =', year_month, len(year_month))
     #в цикле вычисляем количество рабочих часов в каждом из месяцев
     for i in range(len(year_month)):
-        print('сейчас считаю %s месяц'% year_month[i])
         #получаем массив дней в месяце
         day_in_mount = arr_day_month(year_month[i],year)
         #получаем номер середины месяца для подсчета аванса
         num_center_day = center_month(day_in_mount)
         #получаем количество часов в месяце и до аванса, и массив часов работы в дне
         sum_month = month_recount(day_in_mount, num_center_day)
-        print('sum_month =', sum_month, len(sum_month))
         #записываем в Exel 
         if(write_sum_month(sum_month[0], sum_month[1], num_center_day, sum_month[2], year_month[i], year) == False):
             return False
@@ -657,7 +570,6 @@ def write_sum_month(sum_month, sum_cnt_month, num_cnt_day, day_in_mount, month, 
     #выбираем активным лист с нашим годом
     sheet = read_book.sheet_by_index(sheet_index)
     
-    print('sheet = ', sheet)
     #поиск заданного месяца в файле
     i = sheet.nrows-1
     while sheet.row_values(i)[0] != month_word[month-1]:

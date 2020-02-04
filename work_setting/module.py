@@ -18,7 +18,6 @@ def log_info(msg):
 
 #универсальная запись в настроечный файл
 def write_setting(date, num_setting):
-    #print(88, num_setting)
     #читаем файл построчно
     f = open('work_setting/work_setting.txt', 'r', encoding = 'utf-8')
     lines = f.readlines()

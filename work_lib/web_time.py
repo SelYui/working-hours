@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 '''
-Модуль для получения рабочего времени с сайта марса
+Модуль для получения рабочего времени с сайта
 '''
 import time, datetime, requests
-from work_setting import dialog, module, adjacent_classes
-from work_lib import work_time, shutdown_lib
+from work_setting import module
+from work_lib import work_time
 
 #после чтения с сайта удаляем ненужные символы
 symbol = ['<table border="1" data-count="','<th class="header" colspan="3">','<tr class="header">','</table>','<tr>','</tr>','<th>', '</th>','</td>','<td>','">',]
@@ -72,7 +72,6 @@ def web_main():
         tekday = int(date[8:10])    #текущий день
         tekmonth = int(date[5:7])   #текущий месяц
         tekyear = int(date[0:4])    #текущий год
-    print(date, tekday, tekmonth, tekyear)
     
     #получаем время после которого выключим компьютер
     max_timE = module.read_setting(25)
@@ -81,7 +80,6 @@ def web_main():
     my_data = {'type': 'search', 'info': name_id}
     
     while True:
-        print(10)
         #также записываем текущее время в файл, что бы в случае сбоя записать его в Exel файл
         timeExit = datetime.datetime.now()      #получаем текущее время
         #записываем текущее время в файл
@@ -105,7 +103,6 @@ def web_main():
         
             #записываем массив времен прихода (если вдруг комп включили после нескольких заходов на марс)
             for i in range(len(timestart)):
-                print('cycl = ',i, len(timestart))
                 #получаем время прихода, записываем его в Exel
                 try:
                     timeS = timestart[i]
@@ -113,30 +110,23 @@ def web_main():
                     work_time.start_work(int(timeS[3:5]), int(timeS[0:2]), tekday, tekmonth, tekyear)
                 except:
                     module.log_info('не удалось записать время прихода')
-                print(12)
                 try:
-                    print(13)
                     timeE = timeexit[i]
                     #записываем время ухода
                     work_time.exit_work(int(timeE[3:5]), int(timeE[0:2]), tekday, tekmonth, tekyear)
                 except:
-                    print(14)
                     module.log_info('не удалось записать время ухода')
-                print(timestart, timeexit)
-                print('end_cycl')
                 i=i+1
 
             try:
                 #проверяем условие выключения компьютера
                 if(timeexit[-1] > max_timE):
-                    print("Выключаюсь")
                     #выставляем признак завершения (для потока с таймером завершения)
                     return True
                 else:
                     None
             except:
                 None
-            print(11)
         time.sleep(60)
     
 #функция для получения даты с сайта

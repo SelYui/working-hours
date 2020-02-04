@@ -2,13 +2,13 @@
 '''
 Модули с описанием смежных классов
 '''
-from PyQt5.QtWidgets import QWidget, QDialog, QLabel, QPushButton, qApp, QApplication, QHBoxLayout, QVBoxLayout, QMessageBox, QProgressBar
+from PyQt5.QtWidgets import QWidget, QDialog, QLabel, QPushButton, QVBoxLayout, QProgressBar
 from PyQt5.QtGui import QFont
-from PyQt5.QtCore import QThread, Qt, QBasicTimer, QObject, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import Qt, QObject, pyqtSignal, pyqtSlot
 
 from work_lib import work_time, web_time, shutdown_lib
 from work_setting import module, dialog
-import datetime, time, sys, threading
+import datetime, time
 #from win32com.test.testIterators import SomeObject
 
 #организуем многопоточнсть (считываем с сайта или ловим выключение компьютера в отдельном потоке)
@@ -23,13 +23,11 @@ class ShowShutOrWeb(QObject):
     def ShutOrWeb(self):
         #если выставлена галочка работы с сайтом - считываем сайт
         if(int(module.read_setting(16))):
-            print(1234)
             #запускаем функцию чтения данных с сайта марса во втором потоке
             self.RunWeb()
             
         #иначе работам через "отлов" включения/выключение компьютера
         else:
-            print(1235)
             #получаем текущую дату и время компа
             tekdateandtimeStart = datetime.datetime.now()
     
@@ -44,7 +42,6 @@ class ShowShutOrWeb(QObject):
             
             #просто записываем каждую минуту в файл текущее время (так тратим меньше ресурсов и не надо "ловить" выключение компьютера)
             while True:
-                print(11)
                 #получаем текущее время
                 timeExit = datetime.datetime.now()
                 #записываем текущее время в файл
@@ -55,15 +52,12 @@ class ShowShutOrWeb(QObject):
     #если функция вернет флаг выключения, то запустим окно с таймером на выключение ПК
     @pyqtSlot()
     def RunWeb(self):
-        print(12345)
         flg_shut = web_time.web_main()
         module.log_info("flg_shut: %s" % flg_shut)
         if flg_shut == True:
             module.write_setting(0, 28)    #ставим признак штатного завершения
             self.start_shut.emit(flg_shut)   #посылаем сигнал на запуск таймера для выключения
-            print(4563)
             self.finished_global.emit()
-            print(4564)
             shutdown_lib.signal_shutdown()
     
     #Основной метод счетчика выключения
@@ -72,7 +66,6 @@ class ShowShutOrWeb(QObject):
         self.show_wnd.emit()
         maxtime = 60
         for count in range(maxtime+1):
-            print('count = ', count)
             step = maxtime - count
             self.intReady.emit(step)
             time.sleep(1)
@@ -118,7 +111,6 @@ class ShutWindow(QWidget):
     #запись счетчика в лейбл
     def onShutReady(self, count):
         self.lbl_timer.setText(str(count).rjust(2, '0'))
-        print(count)
     #отображение окна по сигналу
     def on_show_wnd(self):
         self.show()
@@ -138,7 +130,6 @@ class ThreadProgressRecount(QObject):
     
     #функция для подсчета прогресса пересчета Exel файла
     def ThreadRecount(self):
-        print(741)
         self.CountRecount()
     
     @pyqtSlot()
@@ -149,11 +140,9 @@ class ThreadProgressRecount(QObject):
         count = 0
         self.show_act.emit()
         self.count_changed.emit(count)
-        print('exel_year = ', exel_year)
         #в цикле вычисляем количество рабочих часов в каждом из месяцев в году
         for i in range(len(exel_year)):
             result = work_time.year_recount(int(exel_year[i]))
-            print('result = ', result)
             #если пересчет не удался
             if result == False:
                 self.not_recount.emit()
@@ -162,7 +151,6 @@ class ThreadProgressRecount(QObject):
             count = count + step
             self.count_changed.emit(count)
         
-        print('Пересчитал2')
         self.finished.emit()
         self.finished_progress.emit()
     
@@ -191,8 +179,7 @@ class ProgressRecount(QDialog):
     def doAction(self, value):
         self.show()
         self.pbar.setValue(value)
-        if value >= 100:
-            print('Пересчитал', value)
+        #if value >= 100:
         
     #показываем окно, блокируя другие
     def on_show_act(self):
