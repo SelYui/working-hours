@@ -1,455 +1,558 @@
-# -*- coding: cp1251 -*-
+# -*- coding: utf-8 -*-
 '''
-класс для вывода акна с настройками
+РљР»Р°СЃСЃ РґР»СЏ РІС‹РІРѕРґР° Р°РєРЅР° СЃ РЅР°СЃС‚СЂРѕР№РєР°РјРё
 '''
-import os, sys, time
+import os, sys, subprocess, webbrowser
 from work_setting import module, adjacent_classes
-from work_lib import work_time, web_time
+from work_lib import work_time
 
-from PyQt5.QtWidgets import (QMainWindow, QPushButton, QLineEdit, QLabel, QDesktopWidget, QToolTip, QSystemTrayIcon,
-    QMessageBox, QAction, QFileDialog, QApplication, qApp, QMenu, QSpinBox, QCheckBox)
-from PyQt5.QtGui import QIcon, QFont
-from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtWidgets import (QPushButton, QLineEdit, QLabel, QDesktopWidget, QToolTip, QSystemTrayIcon, QDialog, QMessageBox, QAction,
+    QFileDialog, QApplication, QMenu, QSpinBox, QCheckBox, QWidget, QStyle, QTextBrowser, QHBoxLayout, QVBoxLayout, QGridLayout)
+from PyQt5.QtGui import QIcon, QFont, QTextCursor
+from PyQt5.QtCore import Qt, QThread
 from PyQt5.Qt import QIntValidator, QRegExp, QRegExpValidator
 
 url_mars = 'http://www.mars/asu/report/enterexit/'
 
-#создаем окно наших настроек
-class MainWindow(QMainWindow):
+#СЃРѕР·РґР°РµРј РѕРєРЅРѕ РЅР°С€РёС… РЅР°СЃС‚СЂРѕРµРє
+class MainWindow(QWidget):
 
     def __init__(self):
-        # Метод super() возвращает объект родителя класса MainWindow и мы вызываем его конструктор.
-        # Метод __init__() - это конструктор класса в языке Python.
+        # РњРµС‚РѕРґ super() РІРѕР·РІСЂР°С‰Р°РµС‚ РѕР±СЉРµРєС‚ СЂРѕРґРёС‚РµР»СЏ РєР»Р°СЃСЃР° MainWindow Рё РјС‹ РІС‹Р·С‹РІР°РµРј РµРіРѕ РєРѕРЅСЃС‚СЂСѓРєС‚РѕСЂ.
+        # РњРµС‚РѕРґ __init__() - СЌС‚Рѕ РєРѕРЅСЃС‚СЂСѓРєС‚РѕСЂ РєР»Р°СЃСЃР° РІ СЏР·С‹РєРµ Python.
         super().__init__()
-        # Создание GUI поручено методу initUI().
+        
+        #РёРЅРёС†РёР°Р»РёР·Р°С†РёСЏ РїРѕС‚РѕРєРѕРІ
+        self.initThread()
+        # РёРЅРёС†РёР°Р»РёР·Р°С†РёСЏ GUI
         self.initUI()
-
-
+        
+    def initThread(self):
+        #СЃРѕР·РґР°РµРј РїРѕС‚РѕРє РІРЅСѓС‚СЂРё С„РѕСЂРјС‹
+        self.obj = adjacent_classes.ShowShutOrWeb()
+        self.obj_progress = adjacent_classes.ThreadProgressRecount()
+        self.thread = QThread()
+        self.thread_progress = QThread()
+        self.wind = adjacent_classes.ShutWindow()
+        self.act = adjacent_classes.ProgressRecount()
+        #РїРµСЂРµРјРµС‰Р°РµРј РІ thread
+        self.obj.moveToThread(self.thread)
+        self.obj_progress.moveToThread(self.thread_progress)
+        #РїРѕРґРєР»СЋС‡Р°РµРј СЃРёРіРЅР°Р»С‹ Рє СЃР»РѕС‚Р°Рј РїРѕС‚РѕРєР° Рё Рє СЃР»РѕС‚Р°РјРё С„РѕСЂРјС‹ РґР»СЏ РІС‹РІРѕРґР° РґР°РЅРЅС‹С…
+        self.obj.start_shut.connect(self.obj.CountTime)     #СЃРёРіРЅР°Р» РЅР° Р·Р°РїСѓСЃРє С‚Р°Р№РјРµСЂР° РІС‹РєР»СЋС‡РµРЅРёСЏ
+        self.obj.intReady.connect(self.wind.onShutReady)    #СЃРёРіРЅР°Р» РґР»СЏ РІС‹РІРѕРґР° СЃС‡РµС‚С‡РёРєР° С‚Р°Р№РјРµСЂР°
+        self.obj.show_wnd.connect(self.wind.on_show_wnd)    #РїРѕРєР°Р·С‹РІР°РµРј РѕРєРЅРѕ СЃ СЃС‡РµС‚С‡РёРєРѕРј
+        self.obj.finished_global.connect(self.thread.quit)  #РєРѕРЅРµС† РїРѕС‚РѕРєР°
+        self.obj_progress.count_changed.connect(self.act.doAction)    #СЃРёРіРЅР°Р» РґР»СЏ РІС‹РІРѕРґР° РїСЂРѕРіСЂРµСЃСЃР° РїРµСЂРµСЃС‡РµС‚Р°
+        self.obj_progress.show_act.connect(self.act.on_show_act)
+        self.obj_progress.not_recount.connect(self.do_not_rec)
+        self.obj_progress.finished_progress.connect(self.thread_progress.quit)
+        #РїРѕРґРєР»СЋС‡Р°РµРј СЃРёРіРЅР°Р» РїРѕС‚РѕРєРѕРІРѕРіРѕ РїРѕРґРєР»СЋС‡РµРЅРёСЏ Рє РјРµС‚РѕРґСѓ
+        self.thread.started.connect(self.obj.ShutOrWeb)
+        self.thread.finished.connect(self.cleanUp)
+        self.thread_progress.started.connect(self.obj_progress.ThreadRecount)
+        self.thread_progress.finished.connect(self.off_show_act)
+        
     def initUI(self):
-        #получаем путь к файлу и имя файла Exel из нашего настроечного файла
-        WorkPath = module.read_path()
-        WorkName = module.read_name()
-        WorkOffset = module.read_offset()
-        WorkReload = module.read_reload()
-        YouNumber = module.read_number()
-        CheckNum = module.read_check()
-        WorkShut = module.read_timeShut()
-        
-        #окно стало неизменяемых размеров
-        self.setFixedSize(QSize(495, 330))             # Устанавливаем фиксированные размеры окна
-        self.setWindowTitle("Подсчёт рабочего времени")  # Устанавливаем заголовок окна
-        self.setWindowIcon(QIcon('icon\Bill_chipher.jpg'))         # Устанавливаем иконку
-        self.center()               # помещаем окно в центр экрана
-        
-        #создаем лейбел с именем файла
-        self.lblN = QLabel(self)
-        self.lblN.setFont(QFont('Arial', 12))        #Шрифт
-        self.lblN.setText('Настройки файла ' + WorkName)
-        self.lblN.move(10, 10)                      #расположение в окне
-        self.lblN.adjustSize()                           #адаптивный размер в зависимости от содержимого
-        
-        #cоздаем строку с инструкцией
-        self.lblI = QLabel(self)
-        self.lblI.setFont(QFont('Arial', 12))        #Шрифт
-        self.lblI.setText("Путь к файлу:")
-        self.lblI.move(10, 50)                      #расположение в окне
-        self.lblI.adjustSize()                           #адаптивный размер в зависимости от содержимого
-        #self.lblI.resize(200, 30)
-        
-        #cоздаем строку с инструкцией для смещения
-        self.lblS = QLabel(self)
-        self.lblS.setFont(QFont('Arial', 12))        #Шрифт
-        self.lblS.setText("Смещение:               мин.")
-        self.lblS.move(10, 130)                      #расположение в окне
-        self.lblS.adjustSize()                       #адаптивный размер в зависимости от содержимого
-        '''
-        #cоздаем строку с инструкцией для смещения (минуты)
-        self.lblSm = QLabel(self)
-        self.lblSm.setFont(QFont('Arial', 12))        #Шрифт
-        self.lblSm.setText(" мин.")
-        self.lblSm.move(150, 135)                      #расположение в окне
-        self.lblSm.adjustSize()                       #адаптивный размер в зависимости от содержимого
-        '''
-        #cоздаем строку с инструкцией для времени безопасного ухода
-        self.lblU = QLabel(self)
-        self.lblU.setFont(QFont('Arial', 12))        #Шрифт
-        self.lblU.setText("Возможный уход:               мин.")
-        self.lblU.move(10, 162)                      #расположение в окне
-        self.lblU.adjustSize()                       #адаптивный размер в зависимости от содержимого
-          
-        #cоздаем строку с инструкцией для индивидуального номера
-        self.lblCh = QLabel(self)
-        self.lblCh.setFont(QFont('Arial', 12))        #Шрифт
-        self.lblCh.setText("Ваш номер на сайте:")
-        self.lblCh.move(10, 231)                      #расположение в окне
-        self.lblCh.adjustSize()                       #адаптивный размер в зависимости от содержимого
-        
-        #cоздаем строку с инструкцией для времени выключения
-        self.lblSh = QLabel(self)
-        self.lblSh.setFont(QFont('Arial', 12))        #Шрифт
-        self.lblSh.setText("Выключать компьютер после:")
-        self.lblSh.move(10, 262)                      #расположение в окне
-        self.lblSh.adjustSize()                       #адаптивный размер в зависимости от содержимого
-        
-        #создаем строку для ввода пути к файлу
-        self.le = QLineEdit(self)
-        self.le.setFont(QFont('Arial', 12))         #Шрифт
-        self.le.move(10, 72)                        #расположение в окне 
-        self.le.resize(360,26)                      #размер строки 
-        self.le.setText(WorkPath + '/' + WorkName)  #пишем путь из настроечного файла
-        #self.le.returnPressed.connect(self.btn_save.click)  # click on <Enter>
-        
-        #создаем строку для ввода индивидуального номера сотрудника
-        self.lenum = QLineEdit(self)
-        self.lenum.setFont(QFont('Arial', 12))         #Шрифт
-        self.lenum.move(170, 229)                        #расположение в окне 
-        self.lenum.resize(45,26)                      #размер строки
-        self.lenum.setValidator(QIntValidator(0,9999))
-        self.lenum.setText(YouNumber)          #пишем путь из настроечного файла
-        self.lenum.returnPressed.connect(self.save_setting_btn) # click on <Enter>
-        self.lenum.setEnabled(False)        #делаем строку неактивной
-        
-        #создаем Валидатор для строки времени
-        hour = '(2[0123]|([0-1][0-9]))'
-        minute = '[0-5][0-9]'
-        timeRange = QRegExp('^' + hour + ':' + minute + '$')
-        timeVali = QRegExpValidator(timeRange, self)
-        #создаем строку для ввода выключения компьютера
-        self.leshut = QLineEdit(self)
-        self.leshut.setFont(QFont('Arial', 12))         #Шрифт
-        self.leshut.move(235, 260)                        #расположение в окне 
-        self.leshut.resize(50,26)                      #размер строки
-        self.leshut.setText(str(WorkShut))          #пишем путь из настроечного файла
-        self.leshut.setValidator(timeVali)
-        #self.leshut.setInputMask('99:99')
-        self.leshut.returnPressed.connect(self.save_setting_btn)    # click on <Enter>
-        self.leshut.setEnabled(False)        #делаем строку неактивной
-        
-        #создаем кнопку для изменения расположения файла
-        self.btnI = QPushButton('Изменить', self)
-        self.btnI.setFont(QFont('Arial', 12))        #Шрифт
-        self.btnI.move(385, 70)                      #расположение в окне кнопки
-        self.btnI.clicked.connect(self.getfile)      #действие по нажатию
-        self.btnI.setAutoDefault(True)               # click on <Enter>
-        #будет только кнопка изменения файла
+        #РїРѕР»СѓС‡Р°РµРј РЅР°СЃС‚СЂРѕР№РєРё РёР· С„Р°Р№Р»Р°
+        WorkPath = module.read_setting(4)
+        WorkName = module.read_setting(1)
+        WorkDiner = module.read_setting(7)
+        WorkOffset = int(module.read_setting(10))
+        WorkReload = int(module.read_setting(13))
+        YouNumber = module.read_setting(19)
+        CheckNum = int(module.read_setting(16))
+        WorkShut = module.read_setting(22)
+     
+    #РЎРѕР·РґР°РµРј СЃР°РјРѕ РѕРєРЅРѕ
+        self.resize(495, 360)                            # РЈСЃС‚Р°РЅР°РІР»РёРІР°РµРј РЅР°С‡Р°Р»СЊРЅС‹Рµ СЂР°Р·РјРµСЂС‹ РѕРєРЅР°
+        self.setWindowTitle("РџРѕРґСЃС‡С‘С‚ СЂР°Р±РѕС‡РµРіРѕ РІСЂРµРјРµРЅРё")  # РЈСЃС‚Р°РЅР°РІР»РёРІР°РµРј Р·Р°РіРѕР»РѕРІРѕРє РѕРєРЅР°
+        self.setWindowIcon(QIcon('icon\Bill_chipher.jpg'))         # РЈСЃС‚Р°РЅР°РІР»РёРІР°РµРј РёРєРѕРЅРєСѓ
+        self.center()               # РїРѕРјРµС‰Р°РµРј РѕРєРЅРѕ РІ С†РµРЅС‚СЂ СЌРєСЂР°РЅР°
+    
+    
+    #РІРёРґР¶РµС‚С‹ РґР»СЏ РёРјРµРЅРё С„Р°Р№Р»Р°
+        self.lblN = QLabel(self)                    #СЃРѕР·РґР°РµРј Р»РµР№Р±РµР» СЃ РёРјРµРЅРµРј С„Р°Р№Р»Р°
+        self.lblN.setFont(QFont('Arial', 12))        #РЁСЂРёС„С‚
+        self.lblN.setText('РќР°СЃС‚СЂРѕР№РєРё С„Р°Р№Р»Р° ' + WorkName)
 
-        #создаем кнопку для открытия директории/файла
-        self.btnO = QPushButton('Открыть', self)
-        self.btnO.setFont(QFont('Arial', 12))        #Шрифт
-        self.btnO.move(385, 100)                      #расположение в окне кнопки
-        self.btnO.clicked.connect(self.opendirectory)      #действие по нажатию
+        
+    #РІРёРґР¶РµС‚С‹ РґР»СЏ РїСѓС‚Рё Рє С„Р°Р№Р»Сѓ
+        self.lblI = QLabel(self)                    #cРѕР·РґР°РµРј СЃС‚СЂРѕРєСѓ СЃ РёРЅСЃС‚СЂСѓРєС†РёРµР№
+        self.lblI.setFont(QFont('Arial', 12))        #РЁСЂРёС„С‚
+        self.lblI.setText("РџСѓС‚СЊ Рє С„Р°Р№Р»Сѓ:")
+        
+        self.le = QLineEdit(self)                   #СЃРѕР·РґР°РµРј СЃС‚СЂРѕРєСѓ РґР»СЏ РІРІРѕРґР° РїСѓС‚Рё Рє С„Р°Р№Р»Сѓ
+        self.le.setFont(QFont('Arial', 12))         #РЁСЂРёС„С‚
+        self.le.setText(WorkPath + '/' + WorkName)  #РїРёС€РµРј РїСѓС‚СЊ РёР· РЅР°СЃС‚СЂРѕРµС‡РЅРѕРіРѕ С„Р°Р№Р»Р°
+        
+        self.btnI = QPushButton('РР·РјРµРЅРёС‚СЊ', self)       #СЃРѕР·РґР°РµРј РєРЅРѕРїРєСѓ РґР»СЏ РёР·РјРµРЅРµРЅРёСЏ СЂР°СЃРїРѕР»РѕР¶РµРЅРёСЏ С„Р°Р№Р»Р°
+        self.btnI.setFont(QFont('Arial', 12))        #РЁСЂРёС„С‚
+        self.btnI.clicked.connect(self.getfile)      #РґРµР№СЃС‚РІРёРµ РїРѕ РЅР°Р¶Р°С‚РёСЋ
+        self.btnI.setAutoDefault(True)               # click on <Enter>
+
+        self.btnO = QPushButton('РћС‚РєСЂС‹С‚СЊ', self)    #СЃРѕР·РґР°РµРј РєРЅРѕРїРєСѓ РґР»СЏ РѕС‚РєСЂС‹С‚РёСЏ РґРёСЂРµРєС‚РѕСЂРёРё/С„Р°Р№Р»Р°
+        self.btnO.setFont(QFont('Arial', 12))        #РЁСЂРёС„С‚
+        self.btnO.clicked.connect(self.opendirectory)      #РґРµР№СЃС‚РІРёРµ РїРѕ РЅР°Р¶Р°С‚РёСЋ
         self.btnO.setAutoDefault(True)               # click on <Enter>
         
-        #создаем кнопку для подсказки
-        self.btnch = QPushButton('?', self)
-        self.btnch.setFont(QFont('Arial', 18))        #Шрифт
-        self.btnch.move(235, 200)                      #расположение в окне кнопки
-        self.btnch.resize(20, 26)
-        try:
-            self.btnch.clicked.connect(self.openhelp)      #действие по нажатию
-        except Exception as e:
-            module.log_info('Error openhelp: %s' %e)
-        self.btnch.setAutoDefault(True)               # click on <Enter>
+        self.btnRec = QPushButton('РџРµСЂРµСЃС‡РёС‚Р°С‚СЊ', self)    #СЃРѕР·РґР°РµРј РєРЅРѕРїРєСѓ РґР»СЏ РїРµСЂРµСЃС‡РµС‚Р° РІСЂРµРјРµРЅРё РІ С„Р°Р№Р»Рµ
+        self.btnRec.setFont(QFont('Arial', 12))        #РЁСЂРёС„С‚
+        self.btnRec.clicked.connect(self.exel_recount)      #РґРµР№СЃС‚РІРёРµ РїРѕ РЅР°Р¶Р°С‚РёСЋ
+        self.btnRec.setAutoDefault(True)               # click on <Enter>
         
-        #создаем SpinBox для выбора времени
-        self.spb = QSpinBox(self)
-        self.spb.setFont(QFont('Arial', 12))        #Шрифт
-        self.spb.move(100, 128)                     #расположение в окне кнопки
-        self.spb.resize(45, 25)                     #размер
-        self.spb.setMaximum(60)                     #верхняя граница счетчика
-        self.spb.setMinimum(0)                      #нижняя граница счетчика
+        
+    #РІРёРґР¶РµС‚С‹ РґР»СЏ РІСЂРµРјРµРЅРё РѕР±РµРґР°
+        self.lblO = QLabel(self)                        #cРѕР·РґР°РµРј СЃС‚СЂРѕРєСѓ СЃ РёРЅСЃС‚СЂСѓРєС†РёРµР№ РґР»СЏ СЃРјРµС‰РµРЅРёСЏ
+        self.lblO.setFont(QFont('Arial', 12))        #РЁСЂРёС„С‚
+        self.lblO.setText("РћР±РµРґ (РјРёРЅ.):")
+        
+        self.spbO = QSpinBox(self)                   #СЃРѕР·РґР°РµРј SpinBox РґР»СЏ РІС‹Р±РѕСЂР° РІСЂРµРјРµРЅРё
+        self.spbO.setFont(QFont('Arial', 12))        #РЁСЂРёС„С‚
+        self.spbO.setMaximum(60)                     #РІРµСЂС…РЅСЏСЏ РіСЂР°РЅРёС†Р° СЃС‡РµС‚С‡РёРєР°
+        self.spbO.setMinimum(0)                      #РЅРёР¶РЅСЏСЏ РіСЂР°РЅРёС†Р° СЃС‡РµС‚С‡РёРєР°
+        self.spbO.setSingleStep(5)                   #С€Р°Рі
+        self.spbO.setValue(int(WorkDiner))
+        
+    #cРѕР·РґР°РµРј РІРёРґР¶РµС‚С‹ РґР»СЏ СЃРјРµС‰РµРЅРёСЏ
+        self.lblS = QLabel(self)                        #cРѕР·РґР°РµРј СЃС‚СЂРѕРєСѓ СЃ РёРЅСЃС‚СЂСѓРєС†РёРµР№ РґР»СЏ СЃРјРµС‰РµРЅРёСЏ
+        self.lblS.setFont(QFont('Arial', 12))        #РЁСЂРёС„С‚
+        self.lblS.setText("РЎРјРµС‰РµРЅРёРµ (РјРёРЅ.):")
+        
+        self.spb = QSpinBox(self)                   #СЃРѕР·РґР°РµРј SpinBox РґР»СЏ РІС‹Р±РѕСЂР° РІСЂРµРјРµРЅРё
+        self.spb.setFont(QFont('Arial', 12))        #РЁСЂРёС„С‚
+        self.spb.setMaximum(60)                     #РІРµСЂС…РЅСЏСЏ РіСЂР°РЅРёС†Р° СЃС‡РµС‚С‡РёРєР°
+        self.spb.setMinimum(0)                      #РЅРёР¶РЅСЏСЏ РіСЂР°РЅРёС†Р° СЃС‡РµС‚С‡РёРєР°
         self.spb.setValue(WorkOffset)
+
+
+    #cРѕР·РґР°РµРј РІРёРґР¶РµС‚С‹ РґР»СЏ РІСЂРµРјРµРЅРё СѓС…РѕРґР°
+        self.lblU = QLabel(self)                        #cРѕР·РґР°РµРј СЃС‚СЂРѕРєСѓ СЃ РёРЅСЃС‚СЂСѓРєС†РёРµР№ РґР»СЏ РІСЂРµРјРµРЅРё Р±РµР·РѕРїР°СЃРЅРѕРіРѕ СѓС…РѕРґР°
+        self.lblU.setFont(QFont('Arial', 12))        #РЁСЂРёС„С‚
+        self.lblU.setText("Р’РѕР·РјРѕР¶РЅС‹Р№ СѓС…РѕРґ (РјРёРЅ.):")
         
-        #создаем SpinBox для выбора времени ухода
-        self.spblered = QSpinBox(self)
-        self.spblered.setFont(QFont('Arial', 12))        #Шрифт
-        self.spblered.move(145, 160)                     #расположение в окне кнопки
-        self.spblered.resize(45, 25)                     #размер
-        self.spblered.setMaximum(60)                     #верхняя граница счетчика
-        self.spblered.setMinimum(0)                      #нижняя граница счетчика
+        self.spblered = QSpinBox(self)                  #СЃРѕР·РґР°РµРј SpinBox РґР»СЏ РІС‹Р±РѕСЂР° РІСЂРµРјРµРЅРё СѓС…РѕРґР°
+        self.spblered.setFont(QFont('Arial', 12))        #РЁСЂРёС„С‚
+        self.spblered.setMaximum(60)                     #РІРµСЂС…РЅСЏСЏ РіСЂР°РЅРёС†Р° СЃС‡РµС‚С‡РёРєР°
+        self.spblered.setMinimum(0)                      #РЅРёР¶РЅСЏСЏ РіСЂР°РЅРёС†Р° СЃС‡РµС‚С‡РёРєР°
+        self.spblered.setSingleStep(5)                        #С€Р°Рі
         self.spblered.setValue(WorkReload)
+
         
-        #создаем checkbox для выбора подчета времени с сайта Марса
-        self.chweb = QCheckBox('Брать время с сайта Марса', self)
-        self.chweb.setFont(QFont('Arial', 12))          #Шрифт
-        self.chweb.move (10, 200)
-        self.chweb.adjustSize()                           #адаптивный размер в зависимости от содержимого
-        self.chweb.stateChanged.connect(self.webtime)           #действие по нажатию
-        #выставляем в соответствии с настройками
+    #cРѕР·РґР°РµРј РІРёРґР¶РµС‚С‹ РґР»СЏ РёРЅРґРёРІРёРґСѓР°Р»СЊРЅРѕРіРѕ РЅРѕРјРµСЂР°
+        self.lblCh = QLabel(self)                   #cРѕР·РґР°РµРј СЃС‚СЂРѕРєСѓ СЃ РёРЅСЃС‚СЂСѓРєС†РёРµР№ РґР»СЏ РёРЅРґРёРІРёРґСѓР°Р»СЊРЅРѕРіРѕ РЅРѕРјРµСЂР°
+        self.lblCh.setFont(QFont('Arial', 12))        #РЁСЂРёС„С‚
+        self.lblCh.setText("Р’Р°С€ РЅРѕРјРµСЂ РЅР° СЃР°Р№С‚Рµ:")
+        
+        self.lenum = QLineEdit(self)                #СЃРѕР·РґР°РµРј СЃС‚СЂРѕРєСѓ РґР»СЏ РІРІРѕРґР° РёРЅРґРёРІРёРґСѓР°Р»СЊРЅРѕРіРѕ РЅРѕРјРµСЂР° СЃРѕС‚СЂСѓРґРЅРёРєР°
+        self.lenum.setFont(QFont('Arial', 12))         #РЁСЂРёС„С‚
+        self.lenum.setValidator(QIntValidator(0,9999))
+        self.lenum.setText(YouNumber)          #РїРёС€РµРј РїСѓС‚СЊ РёР· РЅР°СЃС‚СЂРѕРµС‡РЅРѕРіРѕ С„Р°Р№Р»Р°
+        self.lenum.returnPressed.connect(self.save_setting_btn) # click on <Enter>
+        self.lenum.setEnabled(False)        #РґРµР»Р°РµРј СЃС‚СЂРѕРєСѓ РЅРµР°РєС‚РёРІРЅРѕР№
+
+        
+    #РІРёРґР¶РµС‚С‹ РґР»СЏ РІСЂРµРјРµРЅРё РІС‹РєР»СЋС‡РµРЅРёСЏ
+        self.lblSh = QLabel(self)                   #cРѕР·РґР°РµРј СЃС‚СЂРѕРєСѓ СЃ РёРЅСЃС‚СЂСѓРєС†РёРµР№ РґР»СЏ РІСЂРµРјРµРЅРё РІС‹РєР»СЋС‡РµРЅРёСЏ
+        self.lblSh.setFont(QFont('Arial', 12))        #РЁСЂРёС„С‚
+        self.lblSh.setText("Р’С‹РєР»СЋС‡Р°С‚СЊ РєРѕРјРїСЊСЋС‚РµСЂ РїРѕСЃР»Рµ:")
+        
+        #СЃРѕР·РґР°РµРј Р’Р°Р»РёРґР°С‚РѕСЂ РґР»СЏ СЃС‚СЂРѕРєРё РІСЂРµРјРµРЅРё
+        hour = '(2[0123]|([0-1][0-9]))'
+        minute = '[0-5][0-9]'
+        simbol = '([0-5][0-9]|:)'
+        timeRange = QRegExp('^' + hour + simbol + minute + '$')
+        timeVali = QRegExpValidator(timeRange, self)
+        
+        self.leshut = QLineEdit(self)                   #СЃРѕР·РґР°РµРј СЃС‚СЂРѕРєСѓ РґР»СЏ РІРІРѕРґР° РІС‹РєР»СЋС‡РµРЅРёСЏ РєРѕРјРїСЊСЋС‚РµСЂР°
+        self.leshut.setFont(QFont('Arial', 12))         #РЁСЂРёС„С‚
+        self.leshut.setText(str(WorkShut))          #РїРёС€РµРј РїСѓС‚СЊ РёР· РЅР°СЃС‚СЂРѕРµС‡РЅРѕРіРѕ С„Р°Р№Р»Р°
+        self.leshut.setValidator(timeVali)
+        self.leshut.textChanged.connect(self.time_shutdow)      #СЃРёРіРЅР°Р» РїРѕ РёР·РјРµРЅРµРЅРёСЋ С‚РµРєСЃС‚Р°
+        self.leshut.returnPressed.connect(self.save_setting_btn)    # click on <Enter>
+        self.leshut.setEnabled(False)        #РґРµР»Р°РµРј СЃС‚СЂРѕРєСѓ РЅРµР°РєС‚РёРІРЅРѕР№
+
+    #РІРёРґР¶РµС‚С‹ РґР»СЏ РІС‹Р±РѕСЂР° СЂРµР¶РёРјР° СЂР°Р±РѕС‚С‹ (РїРѕ РІРєР»/РІС‹РєР», РїРѕ СЃР°Р№С‚Сѓ)
+        self.chweb = QCheckBox('Р‘СЂР°С‚СЊ РІСЂРµРјСЏ СЃ СЃР°Р№С‚Р° РњР°СЂСЃР°', self)   #СЃРѕР·РґР°РµРј checkbox РґР»СЏ РІС‹Р±РѕСЂР° РїРѕРґС‡РµС‚Р° РІСЂРµРјРµРЅРё СЃ СЃР°Р№С‚Р° РњР°СЂСЃР°
+        self.chweb.setFont(QFont('Arial', 12))          #РЁСЂРёС„С‚
+        self.chweb.stateChanged.connect(self.webtime)           #РґРµР№СЃС‚РІРёРµ РїРѕ РЅР°Р¶Р°С‚РёСЋ
+
+        #РІС‹СЃС‚Р°РІР»СЏРµРј РІ СЃРѕРѕС‚РІРµС‚СЃС‚РІРёРё СЃ РЅР°СЃС‚СЂРѕР№РєР°РјРё
         if(CheckNum):
             self.chweb.setChecked(True)
         else:
             self.chweb.setChecked(False)
-        
-        #создаем кнопку для всплывающего диалогового окна
-        self.btn_save = QPushButton('Сохранить', self)
-        self.btn_save.setFont(QFont('Arial', 12))        #Шрифт
-        self.btn_save.move(385, 290)                      #расположение в окне кнопки
-        self.btn_save.clicked.connect(self.save_setting_btn)      #действие по нажатию
+            
+        self.btnch = QPushButton('?', self)         #СЃРѕР·РґР°РµРј РєРЅРѕРїРєСѓ РґР»СЏ РїРѕРґСЃРєР°Р·РєРё
+        self.btnch.setFont(QFont('Arial', 12))        #РЁСЂРёС„С‚
+        try:
+            self.btnch.clicked.connect(self.openhelp)      #РґРµР№СЃС‚РІРёРµ РїРѕ РЅР°Р¶Р°С‚РёСЋ
+        except Exception as e:
+            module.log_info('Error openhelp: %s' %e)
+        self.btnch.setAutoDefault(True)               # click on <Enter>
+    
+         
+    #РІРёРґР¶РµС‚С‹ РґР»СЏ СЃРѕС…СЂР°РЅРµРЅРёСЏ
+        self.btn_save = QPushButton('РЎРѕС…СЂР°РЅРёС‚СЊ', self)  #СЃРѕР·РґР°РµРј РєРЅРѕРїРєСѓ РґР»СЏ РІСЃРїР»С‹РІР°СЋС‰РµРіРѕ РґРёР°Р»РѕРіРѕРІРѕРіРѕ РѕРєРЅР°
+        self.btn_save.setFont(QFont('Arial', 12))        #РЁСЂРёС„С‚
+        self.btn_save.clicked.connect(self.save_setting_btn)      #РґРµР№СЃС‚РІРёРµ РїРѕ РЅР°Р¶Р°С‚РёСЋ
+        self.btn_save.setDefault(True)                      #Р·РЅР°С‡Р°Р»СЊРЅРѕ Р±СѓРґРµС‚ РІС‹РґРµР»РµРЅР°
         self.btn_save.setAutoDefault(True)               # click on <Enter>
         
-        self.le.returnPressed.connect(self.btn_save.click)  #действия в строке по интеру
-        self.lenum.returnPressed.connect(self.btn_save.click)  #действия в строке по интеру
-        #self.spb.returnPressed.connect(self.btn_save.click)    #действия в SpinBox по интеру
-        
-        # Инициализируем иконку Tray
+        self.le.returnPressed.connect(self.btn_save.click)  #РґРµР№СЃС‚РІРёСЏ РІ СЃС‚СЂРѕРєРµ РїРѕ РёРЅС‚РµСЂСѓ
+        self.lenum.returnPressed.connect(self.btn_save.click)  #РґРµР№СЃС‚РІРёСЏ РІ СЃС‚СЂРѕРєРµ РїРѕ РёРЅС‚РµСЂСѓ
+
+    #СЂР°СЃРєР»Р°РґС‹РІР°РµРј РІРёРґР¶РµС‚С‹ РІ РіР»Р°РІРЅРѕРј РѕРєРЅРµ
+        self.layout_in_main()
+    
+    # РРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј РёРєРѕРЅРєСѓ Tray
         self.tray_icon = QSystemTrayIcon(self)
-        self.tray_icon.setIcon(QIcon('icon\Bill_chipher.jpg')) #устанавливаем пользовательскую иконку
-        #self.tray_icon.setIcon(self.style().standardIcon(QStyle.SP_ComputerIcon))   #устанавливаем одну из стандартных иконку
- 
-        '''
-            Объявим и добавим действия для работы с иконкой системного трея
-            show - показать окно
-            exit - выход из программы
-        '''
-        show_action = QAction(QIcon('icon\Programming-Show.png'), "Настройки", self)
-        quit_action = QAction(QIcon('icon\exit.png'), "Выход", self)
-        show_action.triggered.connect(self.show)        #при нажатии на show окно открывается
-        quit_action.triggered.connect(self.cleanUp)        #при нажатии на quit приложение закрывается qApp.quit
+        self.tray_icon.setIcon(QIcon('icon\Bill_chipher.jpg')) #СѓСЃС‚Р°РЅР°РІР»РёРІР°РµРј РїРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєСѓСЋ РёРєРѕРЅРєСѓ
+
+        show_action = QAction(QIcon('icon\Programming-Show.png'), "РќР°СЃС‚СЂРѕР№РєРё", self)
+        quit_action = QAction(QIcon('icon\exit.png'), "Р’С‹С…РѕРґ", self)
+        show_action.triggered.connect(self.show)        #РїСЂРё РЅР°Р¶Р°С‚РёРё РЅР° show РѕРєРЅРѕ РѕС‚РєСЂС‹РІР°РµС‚СЃСЏ
+        quit_action.triggered.connect(self.cleanUp)        #РїСЂРё РЅР°Р¶Р°С‚РёРё РЅР° quit РїСЂРёР»РѕР¶РµРЅРёРµ Р·Р°РєСЂС‹РІР°РµС‚СЃСЏ qApp.quit
         tray_menu = QMenu()
         tray_menu.addAction(show_action)
         tray_menu.addAction(quit_action)
         self.tray_icon.setContextMenu(tray_menu)
         self.tray_icon.show()
         
-        #создаем подсказки
-        QToolTip.setFont(QFont('Arial', 10))    # метод устанавливает шрифт, используемый для показа всплывающих подсказок.
-        self.setToolTip('Это окно выбора основных настроек программы')  # создаем подсказку для окна
-        self.lblN.setToolTip('Текущее имя файла, в котором хранится Ваше рабочее время')
-        self.le.setToolTip('Файл с Вашим рабочим временем находится по этому пути\n' + WorkPath + '/' + WorkName)
-        self.lblI.setToolTip('Файл с Вашим рабочим временем находится по этому пути')
-        self.btnI.setToolTip('Выберете файл рабочего времени')    # создаем подсказку для кнопки
-        #self.btnS.setToolTip('Создать новый файл рабочего времени')    # создаем подсказку для кнопки
-        self.btnO.setToolTip('Открыть папку с файлом')    # создаем подсказку для кнопки
-        self.btn_save.setToolTip('Сохранить выставленные настройки')    # создаем подсказку для кнопки
-        self.spb.setToolTip('Это смещение от времени вкл/выкл ПК')    # создаем подсказку
-        self.lblS.setToolTip('Сколько Вам идти от КПП до рабочего места?')    # создаем подсказку для кнопки
-        #self.lblSm.setToolTip('Укажите смещение в минутах')
-        self.lblU.setToolTip('Если компьютер выключится на заданное время,\n то в файле Вашего рабочего времени уход не зафиксируется')
-        self.spblered.setToolTip('Введите время неучетного выхода в мин.')
-        self.lblCh.setToolTip('Введите вашь номер на сайте')
-        self.chweb.setToolTip('Время Вашего прихода фиксируется на сайте:\n' + url_mars + '\n брать время Вашего прихода от туда?')
-        self.lenum.setToolTip('Вашь номер на сайте: ' + YouNumber)
-        self.btnch.setToolTip('Как узнать свой номер на сайте?')
-        self.lblSh.setToolTip('Если ваше время выхода на КПП после этого времени, выключаю компьютер')
-        self.leshut.setToolTip('Введите время в формате:\n00:00')
-        self.tray_icon.setToolTip('Отслеживаю Ваше рабочее время')
-        #self.show()    #показываем окно/показывать будем в основном модуле
+    #СЃРѕР·РґР°РµРј РїРѕРґСЃРєР°Р·РєРё
+        QToolTip.setFont(QFont('Arial', 10))    # РјРµС‚РѕРґ СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚ С€СЂРёС„С‚, РёСЃРїРѕР»СЊР·СѓРµРјС‹Р№ РґР»СЏ РїРѕРєР°Р·Р° РІСЃРїР»С‹РІР°СЋС‰РёС… РїРѕРґСЃРєР°Р·РѕРє.
+        self.setToolTip('Р­С‚Рѕ РѕРєРЅРѕ РІС‹Р±РѕСЂР° РѕСЃРЅРѕРІРЅС‹С… РЅР°СЃС‚СЂРѕРµРє РїСЂРѕРіСЂР°РјРјС‹')  # СЃРѕР·РґР°РµРј РїРѕРґСЃРєР°Р·РєСѓ РґР»СЏ РѕРєРЅР°
+        self.lblN.setToolTip('РўРµРєСѓС‰РµРµ РёРјСЏ С„Р°Р№Р»Р°, РІ РєРѕС‚РѕСЂРѕРј С…СЂР°РЅРёС‚СЃСЏ Р’Р°С€Рµ СЂР°Р±РѕС‡РµРµ РІСЂРµРјСЏ')
+        self.le.setToolTip('Р¤Р°Р№Р» СЃ Р’Р°С€РёРј СЂР°Р±РѕС‡РёРј РІСЂРµРјРµРЅРµРј РЅР°С…РѕРґРёС‚СЃСЏ РїРѕ СЌС‚РѕРјСѓ РїСѓС‚Рё\n' + WorkPath + '/' + WorkName)
+        self.lblI.setToolTip('Р¤Р°Р№Р» СЃ Р’Р°С€РёРј СЂР°Р±РѕС‡РёРј РІСЂРµРјРµРЅРµРј РЅР°С…РѕРґРёС‚СЃСЏ РїРѕ СЌС‚РѕРјСѓ РїСѓС‚Рё')
+        self.btnI.setToolTip('Р’С‹Р±РµСЂРµС‚Рµ С„Р°Р№Р» СЂР°Р±РѕС‡РµРіРѕ РІСЂРµРјРµРЅРё')    # СЃРѕР·РґР°РµРј РїРѕРґСЃРєР°Р·РєСѓ РґР»СЏ РєРЅРѕРїРєРё
+        #self.btnS.setToolTip('РЎРѕР·РґР°С‚СЊ РЅРѕРІС‹Р№ С„Р°Р№Р» СЂР°Р±РѕС‡РµРіРѕ РІСЂРµРјРµРЅРё')    # СЃРѕР·РґР°РµРј РїРѕРґСЃРєР°Р·РєСѓ РґР»СЏ РєРЅРѕРїРєРё
+        self.btnO.setToolTip('РћС‚РєСЂС‹С‚СЊ РїР°РїРєСѓ СЃ С„Р°Р№Р»РѕРј')    # СЃРѕР·РґР°РµРј РїРѕРґСЃРєР°Р·РєСѓ РґР»СЏ РєРЅРѕРїРєРё
+        self.btnRec.setToolTip('РџРµСЂРµСЃС‡РµС‚ СЂР°Р±РѕС‡РµРіРѕ РІСЂРµРјРµРЅРё РІ С„Р°Р№Р»Рµ\n' + WorkName)    # СЃРѕР·РґР°РµРј РїРѕРґСЃРєР°Р·РєСѓ РґР»СЏ РєРЅРѕРїРєРё
+        self.btn_save.setToolTip('РЎРѕС…СЂР°РЅРёС‚СЊ РІС‹СЃС‚Р°РІР»РµРЅРЅС‹Рµ РЅР°СЃС‚СЂРѕР№РєРё')    # СЃРѕР·РґР°РµРј РїРѕРґСЃРєР°Р·РєСѓ РґР»СЏ РєРЅРѕРїРєРё
+        self.spbO.setToolTip('РЈРєР°Р¶РёС‚Рµ РІСЂРµРјСЏ РІР°С€РµРіРѕ РѕР±РµРґР° РІ РјРёРЅ.')
+        self.spb.setToolTip('РЈРєР°Р¶РёС‚Рµ СЃРјРµС‰РµРЅРёРµ РѕС‚ РІСЂРµРјРµРЅРё РІРєР»/РІС‹РєР» РџРљ')    # СЃРѕР·РґР°РµРј РїРѕРґСЃРєР°Р·РєСѓ
+        self.lblS.setToolTip('РЎРєРѕР»СЊРєРѕ Р’Р°Рј РёРґС‚Рё РѕС‚ РљРџРџ РґРѕ СЂР°Р±РѕС‡РµРіРѕ РјРµСЃС‚Р°?')    # СЃРѕР·РґР°РµРј РїРѕРґСЃРєР°Р·РєСѓ РґР»СЏ РєРЅРѕРїРєРё
+        #self.lblSm.setToolTip('РЈРєР°Р¶РёС‚Рµ СЃРјРµС‰РµРЅРёРµ РІ РјРёРЅСѓС‚Р°С…')
+        self.lblU.setToolTip('Р•СЃР»Рё РєРѕРјРїСЊСЋС‚РµСЂ РІС‹РєР»СЋС‡РёС‚СЃСЏ РЅР° Р·Р°РґР°РЅРЅРѕРµ РІСЂРµРјСЏ,\n С‚Рѕ РІ С„Р°Р№Р»Рµ Р’Р°С€РµРіРѕ СЂР°Р±РѕС‡РµРіРѕ РІСЂРµРјРµРЅРё СѓС…РѕРґ РЅРµ Р·Р°С„РёРєСЃРёСЂСѓРµС‚СЃСЏ')
+        self.spblered.setToolTip('Р’РІРµРґРёС‚Рµ РІСЂРµРјСЏ РЅРµСѓС‡РµС‚РЅРѕРіРѕ РІС‹С…РѕРґР° РІ РјРёРЅ.')
+        self.lblCh.setToolTip('Р’РІРµРґРёС‚Рµ РІР°С€СЊ РЅРѕРјРµСЂ РЅР° СЃР°Р№С‚Рµ')
+        self.chweb.setToolTip('Р’СЂРµРјСЏ Р’Р°С€РµРіРѕ РїСЂРёС…РѕРґР° С„РёРєСЃРёСЂСѓРµС‚СЃСЏ РЅР° СЃР°Р№С‚Рµ:\n' + url_mars + '\n Р±СЂР°С‚СЊ РІСЂРµРјСЏ Р’Р°С€РµРіРѕ РїСЂРёС…РѕРґР° РѕС‚ С‚СѓРґР°?')
+        self.lenum.setToolTip('Р’Р°С€СЊ РЅРѕРјРµСЂ РЅР° СЃР°Р№С‚Рµ: ' + YouNumber)
+        self.btnch.setToolTip('РљР°Рє СѓР·РЅР°С‚СЊ СЃРІРѕР№ РЅРѕРјРµСЂ РЅР° СЃР°Р№С‚Рµ?')
+        self.lblSh.setToolTip('Р•СЃР»Рё РІР°С€Рµ РІСЂРµРјСЏ РІС‹С…РѕРґР° РЅР° РљРџРџ РїРѕСЃР»Рµ СЌС‚РѕРіРѕ РІСЂРµРјРµРЅРё, РІС‹РєР»СЋС‡Р°СЋ РєРѕРјРїСЊСЋС‚РµСЂ')
+        self.leshut.setToolTip('Р’РІРµРґРёС‚Рµ РІСЂРµРјСЏ РІ С„РѕСЂРјР°С‚Рµ:\n00:00')
+        self.tray_icon.setToolTip('РћС‚СЃР»РµР¶РёРІР°СЋ Р’Р°С€Рµ СЂР°Р±РѕС‡РµРµ РІСЂРµРјСЏ')
 
-    #диалоговое окно выбора нового файла
-    def getfile(self):
-        dir_path = module.read_path() + '/' + module.read_name()
-        fname = QFileDialog.getOpenFileName(self, 'Выбрать файл', dir_path, 'Exel files (*.xls)')
-        #если новый файл выбран, переписываем путь в настройках и в наших текстовых виджетах
-        if fname != ('', ''):
-            new_dir = os.path.dirname(fname[0])    #путь папки в которой лежит файл
-            new_name = os.path.basename(fname[0])   #имя файла
-            #запись в настроечный файл нового имени файла
-            module.write_name(new_name)
-            #запись в настроечный файл нового пути
-            module.write_path(new_dir)
-            self.le.setText(fname[0])
-            self.lblN.setText('Настройки файла ' + new_name)
+    #Р¤СѓРЅРєС†РёСЏ РґР»СЏ СЂР°СЃРїРѕР»РѕР¶РµРЅРёСЏ РІРёРґР¶РµС‚РѕРІ РІ РѕРєРЅРµ
+    def layout_in_main(self):
+    #СЃРѕР·РґР°РµРј СЃР»РѕРё Рё СЃРµС‚РєРё
+        self.h_boxN = QHBoxLayout()
+        self.h_boxN.addWidget(self.lblN)
         
-    #диалоговое окно сохранения нового файла
+        self.h_boxI = QHBoxLayout()
+        self.h_boxI.addWidget(self.lblI)
+        #СЃРµС‚РєР° РґР»СЏ РєРЅРѕРїРѕРє
+        self.grid_btnIO = QGridLayout()
+        self.grid_btnIO.addWidget(self.le, 1, 0, 1, 4)
+        self.grid_btnIO.addWidget(self.btnI, 1, 5)
+        self.grid_btnIO.addWidget(self.btnO, 2, 5)
+        
+        self.h_boxO = QHBoxLayout()
+        self.h_boxO.addWidget(self.lblO)
+        self.h_boxO.addWidget(self.spbO)
+        self.h_boxO.addStretch(1)
+        
+        self.h_boxS = QHBoxLayout()
+        self.h_boxS.addWidget(self.lblS)
+        self.h_boxS.addWidget(self.spb)
+        self.h_boxS.addStretch(1)
+        
+        self.h_boxU = QHBoxLayout()
+        self.h_boxU.addWidget(self.lblU)
+        self.h_boxU.addWidget(self.spblered)
+        self.h_boxU.addStretch(1)
+        
+        self.h_box_web = QHBoxLayout()
+        self.h_box_web.addWidget(self.chweb)
+        self.h_box_web.addWidget(self.btnch)
+        self.h_box_web.addStretch(1)
+        #СЃРµС‚РєР° РґР»СЏ РѕСЃС‚Р°Р»СЊРЅС‹С… РІРёРґР¶РµС‚РѕРІ
+        self.grid_other = QGridLayout()
+        self.grid_other.addWidget(self.lblCh, 1, 0)
+        self.grid_other.addWidget(self.lenum, 1, 1)
+        self.grid_other.addWidget(self.lblSh, 2, 0, 1, 4)
+        self.grid_other.addWidget(self.leshut, 2, 2)
+        self.grid_other.addWidget(self.btnRec, 3, 7)
+        self.grid_other.addWidget(self.btn_save, 3, 8)
+    #Р·Р°РЅРѕСЃРёРј РІСЃРµ РІ РіРѕСЂРёСЃРѕРЅС‚Р°Р»СЊРЅС‹Р№ СЃР»РѕР№
+        self.v_box = QVBoxLayout()
+        self.v_box.addLayout(self.h_boxN)
+        self.v_box.addLayout(self.h_boxI)
+        self.v_box.addLayout(self.grid_btnIO)
+        self.v_box.addLayout(self.h_boxO)
+        self.v_box.addLayout(self.h_boxS)
+        self.v_box.addLayout(self.h_boxU)
+        self.v_box.addLayout(self.h_box_web)
+        self.v_box.addLayout(self.grid_other)
+    #РїРѕРјРµС‰Р°РµРј РЅР° СЃС‚СЂР°РЅРёС†Сѓ
+        self.setLayout(self.v_box)
+        
+    #Р¤СѓРЅРєС†РёСЏ РґР»СЏ С†РµРЅС‚СЂРёСЂРѕРІР°РЅРёСЏ РѕРєРЅР° РІ СЌРєСЂР°РЅРµ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
+    def center(self):
+        qr = self.frameGeometry()           # РїРѕР»СѓС‡Р°РµРј РїСЂСЏРјРѕСѓРіРѕР»СЊРЅРёРє, С‚РѕС‡РЅРѕ РѕРїСЂРµРґРµР»СЏСЋС‰РёР№ С„РѕСЂРјСѓ РіР»Р°РІРЅРѕРіРѕ РѕРєРЅР°.
+        cp = QDesktopWidget().availableGeometry().center()  # РІС‹СЏСЃРЅСЏРµРј СЂР°Р·СЂРµС€РµРЅРёРµ СЌРєСЂР°РЅР° РЅР°С€РµРіРѕ РјРѕРЅРёС‚РѕСЂР°. РР· СЌС‚РѕРіРѕ СЂР°Р·СЂРµС€РµРЅРёСЏ, РјС‹ РїРѕР»СѓС‡Р°РµРј С†РµРЅС‚СЂР°Р»СЊРЅСѓСЋ С‚РѕС‡РєСѓ.
+        qr.moveCenter(cp)                   # СѓСЃС‚Р°РЅР°РІР»РёРІР°РµРј С†РµРЅС‚СЂ РїСЂСЏРјРѕСѓРіРѕР»СЊРЅРёРєР° РІ С†РµРЅС‚СЂ СЌРєСЂР°РЅР°. Р Р°Р·РјРµСЂ РїСЂСЏРјРѕСѓРіРѕР»СЊРЅРёРєР° РЅРµ РёР·РјРµРЅСЏРµС‚СЃСЏ.
+        self.move(qr.topLeft())             # РїРµСЂРµРјРµС‰Р°РµРј РІРµСЂС…РЅСЋСЋ Р»РµРІСѓСЋ С‚РѕС‡РєСѓ РѕРєРЅР° РїСЂРёР»РѕР¶РµРЅРёСЏ РІ РІРµСЂС…РЅСЋСЋ Р»РµРІСѓСЋ С‚РѕС‡РєСѓ РїСЂСЏРјРѕСѓРіРѕР»СЊРЅРёРєР° qr, С‚Р°РєРёРј РѕР±СЂР°Р·РѕРј С†РµРЅС‚СЂРёСЂСѓСЏ РѕРєРЅРѕ РЅР° РЅР°С€РµРј СЌРєСЂР°РЅРµ.
+    
+
+    #РґРёР°Р»РѕРіРѕРІРѕРµ РѕРєРЅРѕ РІС‹Р±РѕСЂР° РЅРѕРІРѕРіРѕ С„Р°Р№Р»Р°
+    def getfile(self):
+        dir_path = module.read_setting(4) + '/' + module.read_setting(1)
+        fname = QFileDialog.getOpenFileName(self, 'Р’С‹Р±СЂР°С‚СЊ С„Р°Р№Р»', dir_path, 'Exel files (*.xls)')
+        #РµСЃР»Рё РЅРѕРІС‹Р№ С„Р°Р№Р» РІС‹Р±СЂР°РЅ, РїРµСЂРµРїРёСЃС‹РІР°РµРј РїСѓС‚СЊ РІ РЅР°СЃС‚СЂРѕР№РєР°С… Рё РІ РЅР°С€РёС… С‚РµРєСЃС‚РѕРІС‹С… РІРёРґР¶РµС‚Р°С…
+        if fname != ('', ''):
+            new_dir = os.path.dirname(fname[0])    #РїСѓС‚СЊ РїР°РїРєРё РІ РєРѕС‚РѕСЂРѕР№ Р»РµР¶РёС‚ С„Р°Р№Р»
+            new_name = os.path.basename(fname[0])   #РёРјСЏ С„Р°Р№Р»Р°
+            #Р·Р°РїРёСЃСЊ РІ РЅР°СЃС‚СЂРѕРµС‡РЅС‹Р№ С„Р°Р№Р» РЅРѕРІРѕРіРѕ РёРјРµРЅРё С„Р°Р№Р»Р°
+            module.write_setting(new_name, 1)
+            #Р·Р°РїРёСЃСЊ РІ РЅР°СЃС‚СЂРѕРµС‡РЅС‹Р№ С„Р°Р№Р» РЅРѕРІРѕРіРѕ РїСѓС‚Рё
+            module.write_setting(new_dir, 4)
+            self.le.setText(fname[0])
+            self.lblN.setText('РќР°СЃС‚СЂРѕР№РєРё С„Р°Р№Р»Р° ' + new_name)
+        
+    #РґРёР°Р»РѕРіРѕРІРѕРµ РѕРєРЅРѕ СЃРѕС…СЂР°РЅРµРЅРёСЏ РЅРѕРІРѕРіРѕ С„Р°Р№Р»Р° (РЅРµ РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ)
     def savefile(self):
-        dir_path = module.read_path() + '/' + module.read_name()
-        fname = QFileDialog.getSaveFileName(self, 'Выбрать файл', dir_path, 'Exel files (*.xls)')
-        #если новый файл выбран, переписываем путь в настройках и в наших текстовых виджетах
+        dir_path = module.read_setting(4) + '/' + module.read_setting(1)
+        fname = QFileDialog.getSaveFileName(self, 'Р’С‹Р±СЂР°С‚СЊ С„Р°Р№Р»', dir_path, 'Exel files (*.xls)')
+        #РµСЃР»Рё РЅРѕРІС‹Р№ С„Р°Р№Р» РІС‹Р±СЂР°РЅ, РїРµСЂРµРїРёСЃС‹РІР°РµРј РїСѓС‚СЊ РІ РЅР°СЃС‚СЂРѕР№РєР°С… Рё РІ РЅР°С€РёС… С‚РµРєСЃС‚РѕРІС‹С… РІРёРґР¶РµС‚Р°С…
         if fname != ('', ''):
             new_dir = module.save_setting(fname[0],'Repace')
+            if new_dir!=0:
+                module.log_info("save warning: %s"% new_dir)
             self.le.setText(new_dir[0] + '/' + new_dir[1])
-            self.lblN.setText('Настройки файла ' + new_dir[1])
+            self.lblN.setText('РќР°СЃС‚СЂРѕР№РєРё С„Р°Р№Р»Р° ' + new_dir[1])
+            self.lblN.adjustSize()
     
-    #сохраняем настройки с учетом того что введено в строку
+    #СЃРѕС…СЂР°РЅСЏРµРј РЅР°СЃС‚СЂРѕР№РєРё СЃ СѓС‡РµС‚РѕРј С‚РѕРіРѕ С‡С‚Рѕ РІРІРµРґРµРЅРѕ РІ СЃС‚СЂРѕРєСѓ
     def save_setting_btn(self):
-        #получаем путь к файлу, имя файла Exel и номер пользователя из нашего настроечного файла
-        WorkPath = module.read_path()
-        WorkName = module.read_name()
-        WorkNumb = module.read_number()
-        WorkShut = module.read_timeShut()
+        #РїРѕР»СѓС‡Р°РµРј РїСѓС‚СЊ Рє С„Р°Р№Р»Сѓ, РёРјСЏ С„Р°Р№Р»Р° Exel Рё РЅРѕРјРµСЂ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РёР· РЅР°С€РµРіРѕ РЅР°СЃС‚СЂРѕРµС‡РЅРѕРіРѕ С„Р°Р№Р»Р°
+        WorkPath = module.read_setting(4)
+        WorkName = module.read_setting(1)
+        WorkNumb = module.read_setting(19)
+        WorkShut = module.read_setting(22)
 
-        dir_path = self.le.text()   #получаем путь к новому файлу
+        dir_path = self.le.text()   #РїРѕР»СѓС‡Р°РµРј РїСѓС‚СЊ Рє РЅРѕРІРѕРјСѓ С„Р°Р№Р»Сѓ
         you_numb = self.lenum.text()
         shut_time = self.leshut.text()
         
-        #сохраняем новй путь Exel файла в настроечный файл
+        #СЃРѕС…СЂР°РЅСЏРµРј РЅРѕРІР№ РїСѓС‚СЊ Exel С„Р°Р№Р»Р° РІ РЅР°СЃС‚СЂРѕРµС‡РЅС‹Р№ С„Р°Р№Р»
         if dir_path != '':
-            #если выбранный файл существует записываем в настройки путь к нему
+            #РµСЃР»Рё РІС‹Р±СЂР°РЅРЅС‹Р№ С„Р°Р№Р» СЃСѓС‰РµСЃС‚РІСѓРµС‚ Р·Р°РїРёСЃС‹РІР°РµРј РІ РЅР°СЃС‚СЂРѕР№РєРё РїСѓС‚СЊ Рє РЅРµРјСѓ
             if os.path.exists(dir_path):
-                #запись в настроечный файл нового имени файла
-                module.write_name(os.path.basename(dir_path))
-                #запись в настроечный файл нового пути
-                module.write_path(os.path.dirname(dir_path))
-            #если файла нет, тосздать его?
+                #Р·Р°РїРёСЃСЊ РІ РЅР°СЃС‚СЂРѕРµС‡РЅС‹Р№ С„Р°Р№Р» РЅРѕРІРѕРіРѕ РёРјРµРЅРё С„Р°Р№Р»Р°
+                module.write_setting(os.path.basename(dir_path), 1)
+                #Р·Р°РїРёСЃСЊ РІ РЅР°СЃС‚СЂРѕРµС‡РЅС‹Р№ С„Р°Р№Р» РЅРѕРІРѕРіРѕ РїСѓС‚Рё
+                module.write_setting(os.path.dirname(dir_path), 4)
+            #РµСЃР»Рё С„Р°Р№Р»Р° РЅРµС‚, С‚РѕСЃР·РґР°С‚СЊ РµРіРѕ?
             else:
-                reply = QMessageBox.question(self, 'Сообщение', 'Файл не найден.\nСоздать новый файл?', QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
-                #QMessageBox.warning(self, 'Предупреждение','Файл не найден.\nСоздать новый файл?')
-                # если нажато "Да", создаем файл и сохраняем его путь в настроечный файл
+                reply = QMessageBox.question(self, 'РЎРѕРѕР±С‰РµРЅРёРµ', 'Р¤Р°Р№Р» РЅРµ РЅР°Р№РґРµРЅ.\nРЎРѕР·РґР°С‚СЊ РЅРѕРІС‹Р№ С„Р°Р№Р»?', QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
+                #QMessageBox.warning(self, 'РџСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ','Р¤Р°Р№Р» РЅРµ РЅР°Р№РґРµРЅ.\nРЎРѕР·РґР°С‚СЊ РЅРѕРІС‹Р№ С„Р°Р№Р»?')
+                # РµСЃР»Рё РЅР°Р¶Р°С‚Рѕ "Р”Р°", СЃРѕР·РґР°РµРј С„Р°Р№Р» Рё СЃРѕС…СЂР°РЅСЏРµРј РµРіРѕ РїСѓС‚СЊ РІ РЅР°СЃС‚СЂРѕРµС‡РЅС‹Р№ С„Р°Р№Р»
                 if reply == QMessageBox.Yes:
                     module.new_timework_file(dir_path)
-                    #запись в настроечный файл нового имени файла
-                    module.write_name(os.path.basename(dir_path))
-                    #запись в настроечный файл нового пути
-                    module.write_path(os.path.dirname(dir_path))
-                #self.le.setText(WorkPath + '/' + WorkName)    #вернуть исходное значение пути
-        #если путь пустой выводим сообщение
+                    #Р·Р°РїРёСЃСЊ РІ РЅР°СЃС‚СЂРѕРµС‡РЅС‹Р№ С„Р°Р№Р» РЅРѕРІРѕРіРѕ РёРјРµРЅРё С„Р°Р№Р»Р°
+                    module.write_setting(os.path.basename(dir_path), 1)
+                    #Р·Р°РїРёСЃСЊ РІ РЅР°СЃС‚СЂРѕРµС‡РЅС‹Р№ С„Р°Р№Р» РЅРѕРІРѕРіРѕ РїСѓС‚Рё
+                    module.write_setting(os.path.dirname(dir_path), 4)
+                #self.le.setText(WorkPath + '/' + WorkName)    #РІРµСЂРЅСѓС‚СЊ РёСЃС…РѕРґРЅРѕРµ Р·РЅР°С‡РµРЅРёРµ РїСѓС‚Рё
+        #РµСЃР»Рё РїСѓС‚СЊ РїСѓСЃС‚РѕР№ РІС‹РІРѕРґРёРј СЃРѕРѕР±С‰РµРЅРёРµ
         else:
-            QMessageBox.warning(self, 'Предупреждение','Путь к файлу не может быть пустым')
+            QMessageBox.warning(self, 'РџСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ','РџСѓС‚СЊ Рє С„Р°Р№Р»Сѓ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј')
             self.le.setText(WorkPath + '/' + WorkName)
-        '''
-        мы теперь ничего не сохраняем Просто выбираем другой файл
-        #получаем новое значение из строки
-        dir_path = self.le.text()
-        #если строка не пустая
-        if dir_path != '':
-            new_dir = module.save_setting(dir_path)             #редактируем настроечный файл
-            self.le.setText(new_dir[0] + '/' + new_dir[1])      #обновляем строку
-            self.lblN.setText('Настройки файла ' + new_dir[1])  #обновляем лейбл
-            self.lblN.adjustSize()                              #обновляем размер лейбла
-        #если строка пустая выводится предупреждающее сообщение и возвращается текст
-        else:
-            QMessageBox.warning(self, 'Предупреждение','Путь к файлу не может быть пустым')
-            self.le.setText(WorkPath + '/' + WorkName)
-        '''
         
-        #сохраняем значение из SpinBox в файл
-        module.write_offset(self.spb.value())
-        module.write_reload(self.spblered.value())
+        #СЃРѕС…СЂР°РЅСЏРµРј Р·РЅР°С‡РµРЅРёРµ РёР· SpinBox РІ С„Р°Р№Р»
+        module.write_setting(self.spb.value(),10)
+        module.write_setting(self.spblered.value(),13)
+        module.write_setting(self.spbO.value(), 7)
         
-        #сохраняем новый номер пользователя в файл
+        #СЃРѕС…СЂР°РЅСЏРµРј РЅРѕРІС‹Р№ РЅРѕРјРµСЂ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РІ С„Р°Р№Р»
         if you_numb != '':
-            #если поле не пустое - записываем новое значение в файл
-            module.write_number(you_numb)
+            #РµСЃР»Рё РїРѕР»Рµ РЅРµ РїСѓСЃС‚РѕРµ - Р·Р°РїРёСЃС‹РІР°РµРј РЅРѕРІРѕРµ Р·РЅР°С‡РµРЅРёРµ РІ С„Р°Р№Р»
+            module.write_setting(you_numb,19)
         else:
-            #иначе, выводим предупреждение
-            QMessageBox.warning(self, 'Предупреждение','Ваш номер не может быть пустым')
+            #РёРЅР°С‡Рµ, РІС‹РІРѕРґРёРј РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ
+            QMessageBox.warning(self, 'РџСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ','Р’Р°С€ РЅРѕРјРµСЂ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј')
             self.lenum.setText(WorkNumb)
         
-        #сохраняем новое время выхода
-        print(len(shut_time))
+        #СЃРѕС…СЂР°РЅСЏРµРј РЅРѕРІРѕРµ РІСЂРµРјСЏ РІС‹С…РѕРґР°
         if shut_time != '' and len(shut_time) == 5:
-            #если поле не пустое - записываем новое значение в файл
-            module.write_timeShut(shut_time)
+            #РµСЃР»Рё РїРѕР»Рµ РЅРµ РїСѓСЃС‚РѕРµ - Р·Р°РїРёСЃС‹РІР°РµРј РЅРѕРІРѕРµ Р·РЅР°С‡РµРЅРёРµ РІ С„Р°Р№Р»
+            module.write_setting(shut_time,22)
         elif (len(shut_time) < 5):
-            QMessageBox.warning(self, 'Предупреждение','Время должно иметь формат:\n00:00')
+            QMessageBox.warning(self, 'РџСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ','Р’СЂРµРјСЏ РґРѕР»Р¶РЅРѕ РёРјРµС‚СЊ С„РѕСЂРјР°С‚:\n00:00')
             self.leshut.setText(WorkShut)
         else:
-            #иначе, выводим предупреждение
-            QMessageBox.warning(self, 'Предупреждение','Время выключения не может быть пустым')
+            #РёРЅР°С‡Рµ, РІС‹РІРѕРґРёРј РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ
+            QMessageBox.warning(self, 'РџСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ','Р’СЂРµРјСЏ РІС‹РєР»СЋС‡РµРЅРёСЏ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј')
             self.leshut.setText(WorkShut)
         
-        #выводим предупреждение что новые настройки заработают после перезагрузки компа
-        #QMessageBox.warning(self, 'Предупреждение','Некоторые настройки вступят в силу после перезапуска программы')
+        #РІС‹РІРѕРґРёРј РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ С‡С‚Рѕ РЅРѕРІС‹Рµ РЅР°СЃС‚СЂРѕР№РєРё Р·Р°СЂР°Р±РѕС‚Р°СЋС‚ РїРѕСЃР»Рµ РїРµСЂРµР·Р°РіСЂСѓР·РєРё РєРѕРјРїР°
+        QMessageBox.warning(self, 'РџСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ','РќРµРєРѕС‚РѕСЂС‹Рµ РЅР°СЃС‚СЂРѕР№РєРё РІСЃС‚СѓРїСЏС‚ РІ СЃРёР»Сѓ РїРѕСЃР»Рµ РїРµСЂРµР·Р°РїСѓСЃРєР° РїСЂРѕРіСЂР°РјРјС‹')
     
-    #открываем папку с вашим файлом
+    #РѕС‚РєСЂС‹РІР°РµРј РїР°РїРєСѓ СЃ РІР°С€РёРј С„Р°Р№Р»РѕРј
     def opendirectory(self):
-        path_file = module.read_path() + '/' + module.read_name()
-        os.startfile(os.path.dirname(path_file))    #открыть каталог с файлом
-        os.startfile(path_file)                     #запуск файла
-        
-    #открываем подсказку для выяснения номера на сайте
-    def openhelp(self):
-        #откроем дочернее окно м инструкцией
-        self.w = adjacent_classes.AdjWindow()
-        self.tw = adjacent_classes.ShutWindow()
-        self.tw.show()
-        
-    #Функция для центрирования окна в экране пользователя
-    def center(self):
-        qr = self.frameGeometry()           # получаем прямоугольник, точно определяющий форму главного окна.
-        cp = QDesktopWidget().availableGeometry().center()  # выясняем разрешение экрана нашего монитора. Из этого разрешения, мы получаем центральную точку.
-        qr.moveCenter(cp)                   # устанавливаем центр прямоугольника в центр экрана. Размер прямоугольника не изменяется.
-        self.move(qr.topLeft())             # перемещаем верхнюю левую точку окна приложения в верхнюю левую точку прямоугольника qr, таким образом центрируя окно на нашем экране.
-    
-    #действия при выборе подсчета времени с сайта
-    def webtime(self, state):
-        chtext = 'Теперь время вашего прихода и ухода берется с сайта.\nВаш компьютер автоматически запишет время вашего ухода в файл и\nвыключится!'
-        
-        #если chekbox устанавили
-        if state == Qt.Checked:
-            #если изменился статус, высвечиваем сообщение
-            if module.read_check() == 0:
-                QMessageBox.warning(self, 'Предупреждение',chtext)
-            
-            #module.write_offset('0')        #записываем в настроечный файл нулевое смещение
-            WorkOffset = module.read_offset()
-            #module.write_reload('0')        #записываем в настроечный файл нулевой выход
-            WorkReload = module.read_reload()
-            
-            self.lenum.setEnabled(True)    #делаем строку ввода индивидуального номера активной
-            self.leshut.setEnabled(True)        #делаем строку активной
-            self.spb.setEnabled(False)      #делаем виджет ввода смещеня неактивным
-            self.spblered.setEnabled(False)    #делает виджет ввода возможного ухода неактивным
-            
-            self.spb.setValue(WorkOffset)   #обнуляем смещение
-            self.spblered.setValue(WorkReload)   #обнуляем reload
-            
-            #записываем в файл состояние виджета
-            module.write_checkt('1')
-        #если checkbox сбросили
+        path_file = module.read_setting(4) + '/' + module.read_setting(1)
+        if os.name == 'nt':
+            os.startfile(os.path.dirname(path_file))    #РѕС‚РєСЂС‹С‚СЊ РєР°С‚Р°Р»РѕРі СЃ С„Р°Р№Р»РѕРј
+            os.startfile(path_file)                     #Р·Р°РїСѓСЃРє С„Р°Р№Р»Р°
         else:
-            self.lenum.setEnabled(False)    #делаем строку ввода индивидуального номера неактивной
-            self.leshut.setEnabled(False)        #делаем строку неактивной
-            self.spb.setEnabled(True)      #делаем виджет ввода смещеня активным
+            opener = "open"
+            subprocess.call([opener, path_file])
+        
+    #РѕС‚РєСЂС‹РІР°РµРј РїРѕРґСЃРєР°Р·РєСѓ РґР»СЏ РІС‹СЏСЃРЅРµРЅРёСЏ РЅРѕРјРµСЂР° РЅР° СЃР°Р№С‚Рµ
+    def openhelp(self):
+        #РѕС‚РєСЂРѕРµРј РґРѕС‡РµСЂРЅРµРµ РѕРєРЅРѕ СЃ РёРЅСЃС‚СЂСѓРєС†РёРµР№
+        self.w = AdjWindow()
+        self.w.show()
+    
+    #РєРѕРіРґР° С‚РµРєСЃС‚ РјРµРЅСЏРµС‚СЃСЏ, РїРёС€РµРј ":" РІРѕ РІС‚РѕСЂРѕР№ СЃРёРјРІРѕР»
+    def time_shutdow(self):
+        text = self.leshut.text()
+        if (len(text) >= 3):
+            if text[2] != ':':
+                text = text[:2] + ':' + text[2:]
+                self.leshut.setText(text)
+    
+    #С„СѓРЅРєС†РёСЏ РґР»СЏ РїРµСЂРµСЂР°СЃС‡РµС‚Р° СЂР°Р±РѕС‚С‹ РІРѕ РІСЃРµРј Exel С„Р°Р№Р»Рµ
+    def exel_recount(self):
+        #Р·Р°РїСѓСЃРєР°РµРј РїРѕС‚РѕРє СЃ РѕС‚РѕР±СЂР°Р¶РµРЅРёРµ РїСЂРѕРіСЂРµСЃСЃР° РїРµСЂРµСЃС‡РµС‚Р°
+        self.thread_progress.start()
+    
+                
+    #РµСЃР»Рё РїРµСЂРµСЃС‡РµС‚ РЅРµ СѓРґР°Р»СЃСЏ РїРѕРєР°Р·С‹РІР°РµРј РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ
+    def do_not_rec(self):
+        #module.log_info("exel_recount exception: %s" % e)
+        message = 'РћС€РёР±РєР° РїРµСЂРµСЃС‡РµС‚Р° С„Р°Р№Р»Р°\nРџРѕР¶Р°Р»СѓР№СЃС‚Р° РїСЂРѕРІРµСЂСЊС‚Рµ, С‡С‚Рѕ:\n    - С„Р°Р№Р» СЃРѕСЃС‚Р°РІР»РµРЅ РєРѕСЂСЂРµРєС‚РЅРѕ (РёРјРµРµС‚ РІСЃРµ РЅР°Р·РІР°РЅРёСЏ РјРµСЃСЏС†РµРІ, РІСЃРµ РІСЂРµРјРµРЅР° РїСЂРёС…РѕРґР° Рё СѓС…РѕРґР°)\n    - С„Р°Р№Р» Р·Р°РєСЂС‹С‚\nР РїРѕРІС‚РѕСЂРёС‚Рµ РїРѕРїС‹С‚РєСѓ'
+        reply = QMessageBox.warning(self, 'РћС€РёР±РєР°', message, QMessageBox.Retry | QMessageBox.Cancel, QMessageBox.Retry)
+        # РµСЃР»Рё РЅР°Р¶Р°С‚Рѕ "РџРѕРІС‚РѕСЂ", Р·Р°РїСѓСЃРєР°РµРјСЃСЏ РµС‰Рµ СЂР°Р·
+        if reply == QMessageBox.Retry:
+            self.exel_recount()
+    
+    #С„СѓРЅРєС†РёСЏ РІС‹РєР»СЋС‡РµРЅРёСЏ РѕРєРЅР° РїСЂРѕРіСЂРµСЃСЃР° РїРµСЂРµСЃС‡РµС‚Р°
+    def off_show_act(self):
+        self.act.hide()
+
+    #РґРµР№СЃС‚РІРёСЏ РїСЂРё РІС‹Р±РѕСЂРµ РїРѕРґСЃС‡РµС‚Р° РІСЂРµРјРµРЅРё СЃ СЃР°Р№С‚Р°
+    def webtime(self, state):
+        chtext = 'РўРµРїРµСЂСЊ РІСЂРµРјСЏ РІР°С€РµРіРѕ РїСЂРёС…РѕРґР° Рё СѓС…РѕРґР° Р±РµСЂРµС‚СЃСЏ СЃ СЃР°Р№С‚Р°.\nР’Р°С€ РєРѕРјРїСЊСЋС‚РµСЂ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё Р·Р°РїРёС€РµС‚ РІСЂРµРјСЏ РІР°С€РµРіРѕ СѓС…РѕРґР° РІ С„Р°Р№Р» Рё\nРІС‹РєР»СЋС‡РёС‚СЃСЏ!'
+        
+        #РµСЃР»Рё chekbox СѓСЃС‚Р°РЅР°РІРёР»Рё
+        if state == Qt.Checked:
+            #РµСЃР»Рё РёР·РјРµРЅРёР»СЃСЏ СЃС‚Р°С‚СѓСЃ, РІС‹СЃРІРµС‡РёРІР°РµРј СЃРѕРѕР±С‰РµРЅРёРµ
+            if int(module.read_setting(16)) == 0:
+                QMessageBox.warning(self, 'РџСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ',chtext)
+            
+            module.write_setting('0',10)        #Р·Р°РїРёСЃС‹РІР°РµРј РІ РЅР°СЃС‚СЂРѕРµС‡РЅС‹Р№ С„Р°Р№Р» РЅСѓР»РµРІРѕРµ СЃРјРµС‰РµРЅРёРµ
+            WorkOffset = int(module.read_setting(10))
+            module.write_setting('0',13)        #Р·Р°РїРёСЃС‹РІР°РµРј РІ РЅР°СЃС‚СЂРѕРµС‡РЅС‹Р№ С„Р°Р№Р» РЅСѓР»РµРІРѕР№ РІС‹С…РѕРґ
+            WorkReload = int(module.read_setting(13))
+            
+            self.lenum.setEnabled(True)    #РґРµР»Р°РµРј СЃС‚СЂРѕРєСѓ РІРІРѕРґР° РёРЅРґРёРІРёРґСѓР°Р»СЊРЅРѕРіРѕ РЅРѕРјРµСЂР° Р°РєС‚РёРІРЅРѕР№
+            self.leshut.setEnabled(True)        #РґРµР»Р°РµРј СЃС‚СЂРѕРєСѓ Р°РєС‚РёРІРЅРѕР№
+            self.spb.setEnabled(False)      #РґРµР»Р°РµРј РІРёРґР¶РµС‚ РІРІРѕРґР° СЃРјРµС‰РµРЅСЏ РЅРµР°РєС‚РёРІРЅС‹Рј
+            self.spblered.setEnabled(False)    #РґРµР»Р°РµС‚ РІРёРґР¶РµС‚ РІРІРѕРґР° РІРѕР·РјРѕР¶РЅРѕРіРѕ СѓС…РѕРґР° РЅРµР°РєС‚РёРІРЅС‹Рј
+            
+            self.spb.setValue(WorkOffset)   #РѕР±РЅСѓР»СЏРµРј СЃРјРµС‰РµРЅРёРµ
+            self.spblered.setValue(WorkReload)   #РѕР±РЅСѓР»СЏРµРј reload
+            
+            #Р·Р°РїРёСЃС‹РІР°РµРј РІ С„Р°Р№Р» СЃРѕСЃС‚РѕСЏРЅРёРµ РІРёРґР¶РµС‚Р°
+            module.write_setting('1',16)
+        #РµСЃР»Рё checkbox СЃР±СЂРѕСЃРёР»Рё
+        else:
+            self.lenum.setEnabled(False)    #РґРµР»Р°РµРј СЃС‚СЂРѕРєСѓ РІРІРѕРґР° РёРЅРґРёРІРёРґСѓР°Р»СЊРЅРѕРіРѕ РЅРѕРјРµСЂР° РЅРµР°РєС‚РёРІРЅРѕР№
+            self.leshut.setEnabled(False)        #РґРµР»Р°РµРј СЃС‚СЂРѕРєСѓ РЅРµР°РєС‚РёРІРЅРѕР№
+            self.spb.setEnabled(True)      #РґРµР»Р°РµРј РІРёРґР¶РµС‚ РІРІРѕРґР° СЃРјРµС‰РµРЅСЏ Р°РєС‚РёРІРЅС‹Рј
             self.spblered.setEnabled(True)
-            #записываем в файл состояние виджета
-            module.write_checkt('0')
-        
-    # действие по нажатию на кнопку 'X'
+            #Р·Р°РїРёСЃС‹РІР°РµРј РІ С„Р°Р№Р» СЃРѕСЃС‚РѕСЏРЅРёРµ РІРёРґР¶РµС‚Р°
+            module.write_setting('0',16)
+       
+    # РґРµР№СЃС‚РІРёРµ РїРѕ РЅР°Р¶Р°С‚РёСЋ РЅР° РєРЅРѕРїРєСѓ 'X'
     def closeEvent(self, event):
-        # показываем сообщение с двумя кнопками: «Yes» и «No».
-        # Первая строка появляется в строке заголовка. Вторая строка – это текст сообщения, отображаемый с помощью диалогового окна.
-        # Третий аргумент указывает комбинацию кнопок, появляющихся в диалоге. Последний параметр – кнопка по умолчанию.
-        # Это кнопка, которая первоначально имеет на себе указатель клавиатуры.
-        # Возвращаемое значение хранится в переменной reply.
-        
-        #если путь в строке не совпадает с тем что записан в настроечном файле
-        setting_dir_path = module.read_path() + '/' + module.read_name()
-        setting_offset = module.read_offset()
-        setting_reload = module.read_reload()
-        setting_number = module.read_number()
+        #РµСЃР»Рё РїСѓС‚СЊ РІ СЃС‚СЂРѕРєРµ РЅРµ СЃРѕРІРїР°РґР°РµС‚ СЃ С‚РµРј С‡С‚Рѕ Р·Р°РїРёСЃР°РЅ РІ РЅР°СЃС‚СЂРѕРµС‡РЅРѕРј С„Р°Р№Р»Рµ
+        setting_dir_path = module.read_setting(4) + '/' + module.read_setting(1)
+        setting_offset = int(module.read_setting(10))
+        setting_reload = int(module.read_setting(13))
+        setting_number = int(module.read_setting(19))
         
         dir_path = self.le.text()
-        work_offset = self.spb.value()
-        work_reload = self.spblered.value()
-        you_number = self.lenum.text()
+        work_offset = int(self.spb.value())
+        work_reload = int(self.spblered.value())
+        you_number = int(self.lenum.text())
         
         if (dir_path != setting_dir_path) or (work_offset != setting_offset) or (you_number != setting_number) or (work_reload != setting_reload):
-            reply = QMessageBox.question(self, 'Сообщение', "Вы хотите сохранить настройки?", QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
-            # если нажато "Да", сохраняем файл подтверждаем закрыти
+            reply = QMessageBox.question(self, 'РЎРѕРѕР±С‰РµРЅРёРµ', "Р’С‹ С…РѕС‚РёС‚Рµ СЃРѕС…СЂР°РЅРёС‚СЊ РЅР°СЃС‚СЂРѕР№РєРё?", QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
+            # РµСЃР»Рё РЅР°Р¶Р°С‚Рѕ "Р”Р°", СЃРѕС…СЂР°РЅСЏРµРј С„Р°Р№Р» РїРѕРґС‚РІРµСЂР¶РґР°РµРј Р·Р°РєСЂС‹С‚Рё
             if reply == QMessageBox.Yes:
                 self.save_setting_btn()
-        #сворачиваем приложение в Tray
-        event.ignore()                          #игнорируем выход из программы
-        self.hide()                             #скрываем программу
-        self.tray_icon.showMessage(             #выводим сообщение
+
+        #СЃРІРѕСЂР°С‡РёРІР°РµРј РїСЂРёР»РѕР¶РµРЅРёРµ РІ Tray
+        event.ignore()                          #РёРіРЅРѕСЂРёСЂСѓРµРј РІС‹С…РѕРґ РёР· РїСЂРѕРіСЂР°РјРјС‹
+        self.hide()                             #СЃРєСЂС‹РІР°РµРј РїСЂРѕРіСЂР°РјРјСѓ
+
+        self.tray_icon.showMessage(             #РІС‹РІРѕРґРёРј СЃРѕРѕР±С‰РµРЅРёРµ
                 "System Tray",
-                "Программа свернута",
+                "РџСЂРѕРіСЂР°РјРјР° СЃРІРµСЂРЅСѓС‚Р°",
                 QIcon('icon\Bill.jpg'),
                 1
             )
-        event.accept()                          #'''не забыть закоментировать!!!!'''
+        #event.accept()                          #'''РЅРµ Р·Р°Р±С‹С‚СЊ Р·Р°РєРѕРјРµРЅС‚РёСЂРѕРІР°С‚СЊ!!!!'''
     
-    #выход из программы
-    @staticmethod
+    #РІС‹С…РѕРґ РёР· РїСЂРѕРіСЂР°РјРјС‹
     def cleanUp(self):
-    #def work_exit(self):
-        #записываю в лог файл
-        module.log_info('Выключаюсь!!!')
-        #сохраняем в Exel файл время выхода
+        #СЃРѕС…СЂР°РЅСЏРµРј РІ Exel С„Р°Р№Р» РІСЂРµРјСЏ РІС‹С…РѕРґР°
         work_time.quit_app()
-        #убираем иконку из Tray
+
+        #СѓР±РёСЂР°РµРј РёРєРѕРЅРєСѓ РёР· Tray
         self.tray_icon.hide()
-        #сам выход
-        qApp.quit()
         
-#открываем наше окно
-#if __name__ == '__main__':
+        #РІС‹РєР»СЋС‡Р°СЋ РїРѕС‚РѕРє
+        self.thread.quit()
+        #СЃР°Рј РІС‹С…РѕРґ
+        sys.exit(0)
+
+#СЃРѕР·РґР°РµРј РѕРєРЅРѕ СЃ РїРѕРґСЃРєР°Р·РєРѕР№
+class AdjWindow(QDialog):
+   
+    def __init__(self):
+        super(AdjWindow, self).__init__()
+                  
+        self.resize(350,500)                                # РЈСЃС‚Р°РЅР°РІР»РёРІР°РµРј С„РёРєСЃРёСЂРѕРІР°РЅРЅС‹Рµ СЂР°Р·РјРµСЂС‹ РѕРєРЅР°
+        self.setWindowTitle("РљР°Рє СѓР·РЅР°С‚СЊ СЃРІРѕР№ РёРЅРґРёРІРёРґСѓР°Р»СЊРЅС‹Р№ РЅРѕРјРµСЂ")  # РЈСЃС‚Р°РЅР°РІР»РёРІР°РµРј Р·Р°РіРѕР»РѕРІРѕРє РѕРєРЅР°
+        self.setWindowIcon(self.style().standardIcon(QStyle.SP_TitleBarContextHelpButton))   #СѓСЃС‚Р°РЅР°РІР»РёРІР°РµРј РѕРґРЅСѓ РёР· СЃС‚Р°РЅРґР°СЂС‚РЅС‹С… РёРєРѕРЅРєСѓ
+        
+        text = module.read_help()
+        #С‡С‚РѕР±С‹ РЅР°С€Рµ РїРѕР»Рµ Р·Р°РЅРёРјР°Р»Рѕ РІСЃРµ РѕРєРЅРѕ
+        self.vbox = QVBoxLayout()
+        #СЃРѕР·РґР°РµРј РїРѕР»Рµ СЃ С‚РµРєСЃС‚РѕРј РёРЅСЃС‚СЂСѓРєС†РёРё Рё СЃСЃС‹Р»РєРѕР№
+        self.pole_vivod = QTextBrowser(self)
+        self.pole_vivod.setFont(QFont('Arial', 14))        #РЁСЂРёС„С‚
+        self.pole_vivod.anchorClicked['QUrl'].connect(self.linkClicked)     #РїРѕ РєР»РёРєСѓ РѕС‚РєСЂС‹РІР°РµРј СЃСЃС‹Р»РєСѓ РІ Р±СЂР°СѓР·РµСЂРµ
+        self.pole_vivod.setOpenLinks(False)     #Р—Р°РїСЂРµС‚ СѓРґР°Р»РµРЅРёСЏ СЃСЃС‹Р»РєРё
+        self.vbox.addWidget(self.pole_vivod)
+        self.setLayout(self.vbox)
+        
+        self.pole_vivod.append(text)
+        self.pole_vivod.moveCursor(QTextCursor.Start)
+        
+    #РѕР±СЂР°Р±Р°С‚С‹РІР°РµРј РєР»РёРє РїРѕ СЃСЃС‹Р»РєРµ
+    def linkClicked(self, url):
+        webbrowser.open(url.toString()) 
+
+#РѕС‚РєСЂС‹РІР°РµРј РЅР°С€Рµ РѕРєРЅРѕ
 def app_main():
     app = QApplication(sys.argv)
     ex = MainWindow()
-    app.aboutToQuit.connect(ex.cleanUp)
-    ex.show()                   #не забыть закоментировать
-    
+    ex.thread.start()
+    #ex.show()                   #РЅРµ Р·Р°Р±С‹С‚СЊ Р·Р°РєРѕРјРµРЅС‚РёСЂРѕРІР°С‚СЊ
     sys.exit(app.exec_())

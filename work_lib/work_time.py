@@ -1,354 +1,612 @@
-# -*- coding: cp1251 -*-
+# -*- coding: utf-8 -*-
 '''
-Модуль для подсчета рабочего времени и записи результатов в файл
+РњРѕРґСѓР»СЊ РґР»СЏ РїРѕРґСЃС‡РµС‚Р° СЂР°Р±РѕС‡РµРіРѕ РІСЂРµРјРµРЅРё Рё Р·Р°РїРёСЃРё СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ РІ С„Р°Р№Р»
 '''
-# -*- coding: cp1251 -*-
 import datetime
 import xlrd, xlwt
 from xlutils.copy import copy
 
 from work_setting import module
 
-#Массив месяцев
-month_word = ('за Январь','за Февраль','за Март','за Апрель','за Май','за Июнь','за Июль','за Август','за Сентябрь','за Октябрь','за Ноябрь','за Декабрь')
+#РњР°СЃСЃРёРІ РјРµСЃСЏС†РµРІ
+month_word = ('Р·Р° РЇРЅРІР°СЂСЊ','Р·Р° Р¤РµРІСЂР°Р»СЊ','Р·Р° РњР°СЂС‚','Р·Р° РђРїСЂРµР»СЊ','Р·Р° РњР°Р№','Р·Р° РСЋРЅСЊ','Р·Р° РСЋР»СЊ','Р·Р° РђРІРіСѓСЃС‚','Р·Р° РЎРµРЅС‚СЏР±СЂСЊ','Р·Р° РћРєС‚СЏР±СЂСЊ','Р·Р° РќРѕСЏР±СЂСЊ','Р·Р° Р”РµРєР°Р±СЂСЊ')
     
-#функция для работы при включении компа
+#С„СѓРЅРєС†РёСЏ РґР»СЏ СЂР°Р±РѕС‚С‹ РїСЂРё РІРєР»СЋС‡РµРЅРёРё РєРѕРјРїР°
 def start_work(tekminute, tekhour, tekday, tekmonth, tekyear):
     '''
-    tekyear = tekdateandtime.year   #Текущий год
-    tekmonth = tekdateandtime.month #текущий месяц
-    tekday = tekdateandtime.day     #текущее число
-    tekhour = tekdateandtime.hour   #текущий час
-    tekminute = tekdateandtime.minute    #текущая минута
+    tekyear = tekdateandtime.year   #РўРµРєСѓС‰РёР№ РіРѕРґ
+    tekmonth = tekdateandtime.month #С‚РµРєСѓС‰РёР№ РјРµСЃСЏС†
+    tekday = tekdateandtime.day     #С‚РµРєСѓС‰РµРµ С‡РёСЃР»Рѕ
+    tekhour = tekdateandtime.hour   #С‚РµРєСѓС‰РёР№ С‡Р°СЃ
+    tekminute = tekdateandtime.minute    #С‚РµРєСѓС‰Р°СЏ РјРёРЅСѓС‚Р°
     '''
-    #получаем путь к файлу и смещение
-    wt_filename = module.read_path() + '/' + module.read_name()
-    min_offset = module.read_offset()
-    #обнуление начальных условий
-    flg_dontdata = 0    #обнуляем признак незаполнения даты
+    #РїРѕР»СѓС‡Р°РµРј РїСѓС‚СЊ Рє С„Р°Р№Р»Сѓ Рё СЃРјРµС‰РµРЅРёРµ
+    wt_filename = module.read_setting(4) + '/' + module.read_setting(1)
+    min_offset = int(module.read_setting(10))
+    #РѕР±РЅСѓР»РµРЅРёРµ РЅР°С‡Р°Р»СЊРЅС‹С… СѓСЃР»РѕРІРёР№
+    flg_dontdata = False    #РѕР±РЅСѓР»СЏРµРј РїСЂРёР·РЅР°Рє РЅРµР·Р°РїРѕР»РЅРµРЅРёСЏ РґР°С‚С‹
     
-    #вычитаем смещение из минут
+    #РІС‹С‡РёС‚Р°РµРј СЃРјРµС‰РµРЅРёРµ РёР· РјРёРЅСѓС‚
     if tekminute - min_offset >= 0:
         tekminute = tekminute - min_offset
     else:
         tekhour = tekhour - 1
         tekminute = 60 + (tekminute - min_offset)
     
-    #открываем наш Exel файл
-    read_book = xlrd.open_workbook(str(wt_filename), formatting_info=True)
-    write_book = copy(read_book)
-    #Переходим на лист текущего года
+    #РѕС‚РєСЂС‹РІР°РµРј РЅР°С€ Exel С„Р°Р№Р»
     try:
-        #если лист с текущим годом уже существует
+        read_book = xlrd.open_workbook(str(wt_filename), formatting_info=True)
+    except:
+        module.log_info('start_work: С„Р°Р№Р» Exel РѕС‚СЃСѓС‚СЃС‚РІСѓРµС‚')
+        return
+    write_book = copy(read_book)
+    #РџРµСЂРµС…РѕРґРёРј РЅР° Р»РёСЃС‚ С‚РµРєСѓС‰РµРіРѕ РіРѕРґР°
+    try:
+        #РµСЃР»Рё Р»РёСЃС‚ СЃ С‚РµРєСѓС‰РёРј РіРѕРґРѕРј СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚
         sheet_index = read_book.sheet_names().index(str(tekyear))
-        #выбираем активным лист с нашим годом
+        #РІС‹Р±РёСЂР°РµРј Р°РєС‚РёРІРЅС‹Рј Р»РёСЃС‚ СЃ РЅР°С€РёРј РіРѕРґРѕРј
         sheet = read_book.sheet_by_index(sheet_index)
-        #чтобы не было ошибок
-        sheet_nrows = sheet.nrows       #строка в Exel
-        sheet_ncols = sheet.ncols       #столбец в Exel
+        #С‡С‚РѕР±С‹ РЅРµ Р±С‹Р»Рѕ РѕС€РёР±РѕРє
+        sheet_nrows = sheet.nrows       #СЃС‚СЂРѕРєР° РІ Exel
+        sheet_ncols = sheet.ncols       #СЃС‚РѕР»Р±РµС† РІ Exel
             
     except ValueError:
-        #если листа текущего года нет, создаем этот лист
+        #РµСЃР»Рё Р»РёСЃС‚Р° С‚РµРєСѓС‰РµРіРѕ РіРѕРґР° РЅРµС‚, СЃРѕР·РґР°РµРј СЌС‚РѕС‚ Р»РёСЃС‚
         sheet = write_book.add_sheet(str(tekyear))
         sheet_index = read_book.nsheets
-        #т.к. страница пустая
+        #С‚.Рє. СЃС‚СЂР°РЅРёС†Р° РїСѓСЃС‚Р°СЏ
         sheet_nrows = 0
         sheet_ncols = 0
-
-    #если лист не пустой, будем писать в конец
+    #РµСЃР»Рё Р»РёСЃС‚ РЅРµ РїСѓСЃС‚РѕР№, Р±СѓРґРµРј РїРёСЃР°С‚СЊ РІ РєРѕРЅРµС†
     if (sheet_nrows and sheet_ncols) != 0:
-        #получаем последнюю дату
+        #РїРѕР»СѓС‡Р°РµРј РїРѕСЃР»РµРґРЅСЋСЋ РґР°С‚Сѓ
         i = sheet_nrows-1
         while i > 0:
             lastdate = sheet.row_values(i)[0]
-            #если строка пустая, то ищем дату выше
+            #РµСЃР»Рё СЃС‚СЂРѕРєР° РїСѓСЃС‚Р°СЏ, С‚Рѕ РёС‰РµРј РґР°С‚Сѓ РІС‹С€Рµ
             if lastdate == '':
                 i=i-1
             else:
-                dd = lastdate[0:2]  #день
-                mm = lastdate[3:5]  #месяц
+                dd = lastdate[0:2]  #РґРµРЅСЊ
+                mm = lastdate[3:5]  #РјРµСЃСЏС†
+                time_date_index = i
                 break
-        
-        #если месяц совпал
+        #РµСЃР»Рё РјРµСЃСЏС† СЃРѕРІРїР°Р»
         if tekmonth == int(mm):
-            #проверяем на то что день на один меньше
+            #РїСЂРѕРІРµСЂСЏРµРј РЅР° С‚Рѕ С‡С‚Рѕ РґРµРЅСЊ РЅР° РѕРґРёРЅ РјРµРЅСЊС€Рµ
             if tekday-1 == int(dd):
-                #заполняем текущюю, строку
+                #Р·Р°РїРѕР»РЅСЏРµРј С‚РµРєСѓС‰СЋСЋ, СЃС‚СЂРѕРєСѓ
                 i = sheet_nrows
-            #за сегодня комп включился не первый раз
+            #Р·Р° СЃРµРіРѕРґРЅСЏ РєРѕРјРї РІРєР»СЋС‡РёР»СЃСЏ РЅРµ РїРµСЂРІС‹Р№ СЂР°Р·
             elif tekday == int(dd):
-                #сравниваем текущую дату прихода с первым (j) столбцом
-                if time_compare(sheet_nrows, sheet, 1, tekhour, tekminute) == 0:    #если такая дата уже записанна, то ничего не делаем
+                #СЃСЂР°РІРЅРёРІР°РµРј С‚РµРєСѓС‰СѓСЋ РґР°С‚Сѓ РїСЂРёС…РѕРґР° СЃ РїРµСЂРІС‹Рј (j) СЃС‚РѕР»Р±С†РѕРј
+                if time_compare(sheet_nrows, sheet, 1, tekhour, tekminute, time_date_index) == 0:    #РµСЃР»Рё С‚Р°РєР°СЏ РґР°С‚Р° СѓР¶Рµ Р·Р°РїРёСЃР°РЅРЅР°, С‚Рѕ РЅРёС‡РµРіРѕ РЅРµ РґРµР»Р°РµРј
                     return
-                #проверяем время выключения, если менее 30 мин, то не записываем время прихода, выходим из программы
+                #РїСЂРѕРІРµСЂСЏРµРј РІСЂРµРјСЏ РІС‹РєР»СЋС‡РµРЅРёСЏ, РµСЃР»Рё РјРµРЅРµРµ 30 РјРёРЅ, С‚Рѕ РЅРµ Р·Р°РїРёСЃС‹РІР°РµРј РІСЂРµРјСЏ РїСЂРёС…РѕРґР°, РІС‹С…РѕРґРёРј РёР· РїСЂРѕРіСЂР°РјРјС‹
                 if pc_reload(sheet.row_values(sheet_nrows-1)[2], tekhour, tekminute) == 0:
                     return
                     
-                #не заполняем дату (признак незаполнения)
-                flg_dontdata = 5826
+                #РЅРµ Р·Р°РїРѕР»РЅСЏРµРј РґР°С‚Сѓ (РїСЂРёР·РЅР°Рє РЅРµР·Р°РїРѕР»РЅРµРЅРёСЏ)
+                flg_dontdata = True
                 i = sheet_nrows
-            #началась новая неделя
+            #РЅР°С‡Р°Р»Р°СЃСЊ РЅРѕРІР°СЏ РЅРµРґРµР»СЏ
             else:
                 i = sheet_nrows+1
-        #начался новый месяц
+        #РЅР°С‡Р°Р»СЃСЏ РЅРѕРІС‹Р№ РјРµСЃСЏС†
         else:
             i = sheet_nrows+2
-            #пишем месяц
+            #РїРёС€РµРј РјРµСЃСЏС†
             write_book.get_sheet(sheet_index).write(i,0,month_word[tekmonth-1])
             i=i+1
-    #если лист пустой, начинаем заполнять с месяца
+    #РµСЃР»Рё Р»РёСЃС‚ РїСѓСЃС‚РѕР№, РЅР°С‡РёРЅР°РµРј Р·Р°РїРѕР»РЅСЏС‚СЊ СЃ РјРµСЃСЏС†Р°
     else:
         i=0
-        #пишем месяц
+        #РїРёС€РµРј РјРµСЃСЏС†
         write_book.get_sheet(sheet_index).write(i,0,month_word[tekmonth-1])
         i=i+1
     
-    #заполняем строку датой
-    if flg_dontdata != 5826:
+    #Р·Р°РїРѕР»РЅСЏРµРј СЃС‚СЂРѕРєСѓ РґР°С‚РѕР№
+    if flg_dontdata == False:
         if tekday < 10 and tekmonth < 10:
             write_book.get_sheet(sheet_index).write(i,0,'0'+str(tekday)+'.0'+str(tekmonth)+'.'+str(tekyear))
-        elif tekday < 10 and tekmonth > 10:
+        elif tekday < 10 and tekmonth >= 10:
             write_book.get_sheet(sheet_index).write(i,0,'0'+str(tekday)+'.'+str(tekmonth)+'.'+str(tekyear))
-        elif tekday > 10 and tekmonth < 10:
+        elif tekday >= 10 and tekmonth < 10:
             write_book.get_sheet(sheet_index).write(i,0,''+str(tekday)+'.0'+str(tekmonth)+'.'+str(tekyear))
         else:
             write_book.get_sheet(sheet_index).write(i,0,str(tekday)+'.'+str(tekmonth)+'.'+str(tekyear))    
-    #заполняем строку временем
+    #Р·Р°РїРѕР»РЅСЏРµРј СЃС‚СЂРѕРєСѓ РІСЂРµРјРµРЅРµРј
     if tekhour < 10 and tekminute < 10:
         write_book.get_sheet(sheet_index).write(i,1,'0'+str(tekhour)+':0'+str(tekminute))
-    elif tekhour < 10 and tekminute > 10:
+    elif tekhour < 10 and tekminute >= 10:
         write_book.get_sheet(sheet_index).write(i,1,'0'+str(tekhour)+':'+str(tekminute))
-    elif tekhour > 10 and tekminute < 10:
+    elif tekhour >= 10 and tekminute < 10:
         write_book.get_sheet(sheet_index).write(i,1,str(tekhour)+':0'+str(tekminute))
     else:
         write_book.get_sheet(sheet_index).write(i,1,str(tekhour)+':'+str(tekminute))
 
-    #если сейчас число больше 15, а предыдущее меньше либо равно, то вычисляем отработанное время в авансе
-    if tekday > 15 and int(dd) <= 15:
-        #вычисляем сумму в этом месяце
+    #РІС‹С‡РёСЃР»СЏРµРј РѕС‚СЂР°Р±РѕС‚Р°РЅРЅРѕРµ РІСЂРµРјСЏ РІ Р°РІР°РЅСЃРµ
+    if tekday >= 15 and int(dd) < 15:
+        #РІС‹С‡РёСЃР»СЏРµРј СЃСѓРјРјСѓ РІ СЌС‚РѕРј РјРµСЃСЏС†Рµ
         i = sheet_nrows-1
-        #ищем наименование месяца в файле
+        #РёС‰РµРј РЅР°РёРјРµРЅРѕРІР°РЅРёРµ РјРµСЃСЏС†Р° РІ С„Р°Р№Р»Рµ
         while sheet.row_values(i)[0] != month_word[tekmonth-1]:
             i=i-1
-        #суммируем все ячейки часов в месяце
-        #начальное значение отработанных часов
+        #СЃСѓРјРјРёСЂСѓРµРј РІСЃРµ СЏС‡РµР№РєРё С‡Р°СЃРѕРІ РІ РјРµСЃСЏС†Рµ
+        #РЅР°С‡Р°Р»СЊРЅРѕРµ Р·РЅР°С‡РµРЅРёРµ РѕС‚СЂР°Р±РѕС‚Р°РЅРЅС‹С… С‡Р°СЃРѕРІ
         mount_sum = 0
         while i <= sheet_nrows-1:
-            #если пустая строка
+            #РµСЃР»Рё РїСѓСЃС‚Р°СЏ СЃС‚СЂРѕРєР°
             if sheet.row_values(i)[3] == '':
                 i=i+1
-            #получаем часы отработанные в дне
+            #РїРѕР»СѓС‡Р°РµРј С‡Р°СЃС‹ РѕС‚СЂР°Р±РѕС‚Р°РЅРЅС‹Рµ РІ РґРЅРµ
             else:
                 mount_sum = mount_sum + float(sheet.row_values(i)[3])
                 i=i+1
-        #округляем до 3его знака
+        #РѕРєСЂСѓРіР»СЏРµРј РґРѕ 3РµРіРѕ Р·РЅР°РєР°
         mount_sum = round(mount_sum,3)
-        #заполняем сумму часов в соответствующую строку
+        #Р·Р°РїРѕР»РЅСЏРµРј СЃСѓРјРјСѓ С‡Р°СЃРѕРІ РІ СЃРѕРѕС‚РІРµС‚СЃС‚РІСѓСЋС‰СѓСЋ СЃС‚СЂРѕРєСѓ
         write_book.get_sheet(sheet_index).write(i,4,'('+str(mount_sum)+')')
 
-    #сохраняем запись
+    #СЃРѕС…СЂР°РЅСЏРµРј Р·Р°РїРёСЃСЊ
     try:
         write_book.save(wt_filename)
     except Exception as e:
-        module.log_info("Не удалось сохранить в Exel время прихода. Exception: %s" % str(e))
+        module.log_info("РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ РІ Exel РІСЂРµРјСЏ РїСЂРёС…РѕРґР°. Exception: %s" % str(e))
 
-#функция для работы при выключении компа     
+#С„СѓРЅРєС†РёСЏ РґР»СЏ СЂР°Р±РѕС‚С‹ РїСЂРё РІС‹РєР»СЋС‡РµРЅРёРё РєРѕРјРїР°     
 def exit_work(tekminute, tekhour, tekday, tekmonth, tekyear):
     '''
-    tekyear = tekdateandtime.year   #Текущий год
-    tekmonth = tekdateandtime.month #текущий месяц
-    tekday = tekdateandtime.day     #текущее число
-    tekhour = tekdateandtime.hour   #текущий час
-    tekminute = tekdateandtime.minute    #текущая минута
+    tekyear = tekdateandtime.year   #РўРµРєСѓС‰РёР№ РіРѕРґ
+    tekmonth = tekdateandtime.month #С‚РµРєСѓС‰РёР№ РјРµСЃСЏС†
+    tekday = tekdateandtime.day     #С‚РµРєСѓС‰РµРµ С‡РёСЃР»Рѕ
+    tekhour = tekdateandtime.hour   #С‚РµРєСѓС‰РёР№ С‡Р°СЃ
+    tekminute = tekdateandtime.minute    #С‚РµРєСѓС‰Р°СЏ РјРёРЅСѓС‚Р°
     '''
-
-    #получаем путь к файлу и смещение
-    wt_filename = module.read_path() + '/' + module.read_name()
-    min_offset = module.read_offset()
+    #РїРѕР»СѓС‡Р°РµРј РїСѓС‚СЊ Рє С„Р°Р№Р»Сѓ Рё СЃРјРµС‰РµРЅРёРµ
+    wt_filename = module.read_setting(4) + '/' + module.read_setting(1)
+    min_offset = int(module.read_setting(10))
     
-    #вычитаем смещение из минут
+    #РІС‹С‡РёС‚Р°РµРј СЃРјРµС‰РµРЅРёРµ РёР· РјРёРЅСѓС‚
     if tekminute + min_offset < 60:
         tekminute = tekminute + min_offset
     else:
         tekhour = tekhour + 1
         tekminute = (tekminute + min_offset) - 60
     
-    #открываем наш Exel файл
-    read_book = xlrd.open_workbook(str(wt_filename), formatting_info=True)
+    #РѕС‚РєСЂС‹РІР°РµРј РЅР°С€ Exel С„Р°Р№Р»
+    try:
+        read_book = xlrd.open_workbook(str(wt_filename), formatting_info=True)
+    except:
+        module.log_info('exit_work: С„Р°Р№Р» Exel РѕС‚СЃСѓС‚СЃС‚РІСѓРµС‚')
+        return
     write_book = copy(read_book)
     
-    #Переходим на лист текущего года
+    #РџРµСЂРµС…РѕРґРёРј РЅР° Р»РёСЃС‚ С‚РµРєСѓС‰РµРіРѕ РіРѕРґР°
     try:
-        #если лист с текущим годом уже существует
+        #РµСЃР»Рё Р»РёСЃС‚ СЃ С‚РµРєСѓС‰РёРј РіРѕРґРѕРј СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚
         sheet_index = read_book.sheet_names().index(str(tekyear))
     except:
-        #если листа текущего года нет значит программа start не сработала
+        #РµСЃР»Рё Р»РёСЃС‚Р° С‚РµРєСѓС‰РµРіРѕ РіРѕРґР° РЅРµС‚ Р·РЅР°С‡РёС‚ РїСЂРѕРіСЂР°РјРјР° start РЅРµ СЃСЂР°Р±РѕС‚Р°Р»Р°
+        module.log_info('exit_work: РІ Exel С„Р°Р№Р»Рµ РѕС‚СЃСѓС‚СЃС‚РІСѓРµС‚ СЃС‚СЂР°РЅРёС†Р° %s' %tekyear)
         return
     
-    #выбираем активным лист с нашим годом
+    #РІС‹Р±РёСЂР°РµРј Р°РєС‚РёРІРЅС‹Рј Р»РёСЃС‚ СЃ РЅР°С€РёРј РіРѕРґРѕРј
     sheet = read_book.sheet_by_index(sheet_index)
-    
-    #получаем последнюю дату
+    #РїРѕР»СѓС‡Р°РµРј РїРѕСЃР»РµРґРЅСЋСЋ РґР°С‚Сѓ
     i = sheet.nrows-1
     while i > 0:
         lastdate = sheet.row_values(i)[0]
-        #если строка пустая, то ищем дату выше
+        #РµСЃР»Рё СЃС‚СЂРѕРєР° РїСѓСЃС‚Р°СЏ, С‚Рѕ РёС‰РµРј РґР°С‚Сѓ РІС‹С€Рµ
         if lastdate == '':
             i=i-1
         else:
-            dd = lastdate[0:2]  #день
-            mm = lastdate[3:5]  #месяц
-            #в этой строке будем писать сумарное количество часов в дне
+            dd = lastdate[0:2]  #РґРµРЅСЊ
+            mm = lastdate[3:5]  #РјРµСЃСЏС†
+            #РІ СЌС‚РѕР№ СЃС‚СЂРѕРєРµ Р±СѓРґРµРј РїРёСЃР°С‚СЊ СЃСѓРјР°СЂРЅРѕРµ РєРѕР»РёС‡РµСЃС‚РІРѕ С‡Р°СЃРѕРІ РІ РґРЅРµ
             time_date_index = i
             break
     
-    #если месяц совпал
+    #РµСЃР»Рё РјРµСЃСЏС† СЃРѕРІРїР°Р»
     if tekmonth == int(mm):
-        #проверяем на то что день такой же
+        #РїСЂРѕРІРµСЂСЏРµРј РЅР° С‚Рѕ С‡С‚Рѕ РґРµРЅСЊ С‚Р°РєРѕР№ Р¶Рµ
         if tekday == int(dd):
-            #заполняем текущюю, строку 
+            #Р·Р°РїРѕР»РЅСЏРµРј С‚РµРєСѓС‰СЋСЋ, СЃС‚СЂРѕРєСѓ 
             i = sheet.nrows-1
-        #Если что-то не совпало, то start не сработал чтобы не заполнить другую строку
-        else: return
-    else: return
-    
-    #сравниваем текущую дату прихода со вторым (j) столбцом
-    if time_compare(sheet.nrows, sheet, 2, tekhour, tekminute) == 0:    #если такая дата уже записанна, то ничего не делаем
+        #Р•СЃР»Рё С‡С‚Рѕ-С‚Рѕ РЅРµ СЃРѕРІРїР°Р»Рѕ, С‚Рѕ start РЅРµ СЃСЂР°Р±РѕС‚Р°Р» С‡С‚РѕР±С‹ РЅРµ Р·Р°РїРѕР»РЅРёС‚СЊ РґСЂСѓРіСѓСЋ СЃС‚СЂРѕРєСѓ
+        else:
+            module.log_info('exit_work: РЅРµС‚ С‚РµРєСѓС‰РµР№ РґР°С‚С‹ %s'% sheet.nrows)
+            return
+    else:
+        module.log_info('exit_work: РЅРµС‚ С‚РµРєСѓС‰РµРіРѕ РјРєСЃСЏС†Р° %s'% sheet.nrows)
         return
-
-    #заполняем строку временем
+    
+    #СЃСЂР°РІРЅРёРІР°РµРј С‚РµРєСѓС‰СѓСЋ РґР°С‚Сѓ РїСЂРёС…РѕРґР° СЃРѕ РІС‚РѕСЂС‹Рј (j) СЃС‚РѕР»Р±С†РѕРј
+    if time_compare(sheet.nrows, sheet, 2, tekhour, tekminute, time_date_index) == 0:    #РµСЃР»Рё С‚Р°РєР°СЏ РґР°С‚Р° СѓР¶Рµ Р·Р°РїРёСЃР°РЅРЅР°, С‚Рѕ РЅРёС‡РµРіРѕ РЅРµ РґРµР»Р°РµРј
+        return
+    #Р·Р°РїРѕР»РЅСЏРµРј СЃС‚СЂРѕРєСѓ РІСЂРµРјРµРЅРµРј
     if tekhour < 10 and tekminute < 10:
         write_book.get_sheet(sheet_index).write(i,2,'0'+str(tekhour)+':0'+str(tekminute))
-    elif tekhour < 10 and tekminute > 10:
+    elif tekhour < 10 and tekminute >= 10:
         write_book.get_sheet(sheet_index).write(i,2,'0'+str(tekhour)+':'+str(tekminute))
-    elif tekhour > 10 and tekminute < 10:
+    elif tekhour >= 10 and tekminute < 10:
         write_book.get_sheet(sheet_index).write(i,2,str(tekhour)+':0'+str(tekminute))
     else:
         write_book.get_sheet(sheet_index).write(i,2,str(tekhour)+':'+str(tekminute))
     
-    #вычисляем количество рабочих часов в сегодняшнем дне
-    i = sheet.nrows-1
-    sum_timework = 0
-    count_cycle = 0
-    #пока не дошли до первой строки дня
-    while i >= time_date_index:
-        #получаем время прихода
-        time_start = sheet.row_values(i)[1]
-        #выделяем часы и минуты прихода
-        hr_start = time_start[0:2]  #часы
-        min_start = time_start[3:5]  #минуты
-        timestart = int(hr_start) + int(min_start)/60
-        #выделяем часы и минуты ухода
-        if (int(sheet.ncols) < 3) or (sheet.row_values(i)[2] == '') or (i == time_date_index):
-            hr_exit = tekhour  #часы
-            min_exit = tekminute  #минуты
-        else:
-            time_exit = sheet.row_values(i)[2]
-            hr_exit = time_exit[0:2]  #часы
-            min_exit = time_exit[3:5]  #минуты
-        timeexit = int(hr_exit) + int(min_exit)/60
-        #разность
-        timework = timeexit - timestart
-        #вычитаем обед. Если одна строка и рабочих часов больше 4, вычитаем час
-        if (i == time_date_index) and timework > 4 and count_cycle == 0:
-            timework = timework -1
-        #сумма рабочих часов в дне
-        sum_timework = sum_timework + timework
-        count_cycle = count_cycle+1
-        i = i-1
-
-    #округляем до 3его знака
-    sum_timework = round(sum_timework,3)
-    #заполняем строку часов
-    write_book.get_sheet(sheet_index).write(time_date_index,3,str(sum_timework))
-    #вычисляем количество рабочих часов в текущем месяце
-    i = sheet.nrows-1
-    #ищем наименование месяца в файле
-    while sheet.row_values(i)[0] != month_word[tekmonth-1]:
-        i=i-1
-    #запоминаем строку, куда запишем сумму
-    index_sum = i
-    #суммируем все ячейки часов в месяце
-    i = time_date_index-1
-    #начальное значение отработанных часов - только что вычисленное значение
-    mount_sum = sum_timework
-    while i > int(index_sum):
-        #если пустая строка
-        if sheet.row_values(i)[3] == '':
-            i=i-1
-        else:
-            #получаем часы отработанные в дне
-            mount_sum = mount_sum + float(sheet.row_values(i)[3])
-            i=i-1
-    #округляем до 3его знака
-    mount_sum = round(mount_sum,3)
-    #заполняем сумму часов в соответствующую строку
-    write_book.get_sheet(sheet_index).write(index_sum,1,str(mount_sum))
-    
-    #сохраняем запись
+    #СЃРѕС…СЂР°РЅСЏРµРј Р·Р°РїРёСЃСЊ
     try:
         write_book.save(wt_filename)
     except Exception as e:
-        module.log_info("Не удалось сохранить в Exel время ухода. Exception: %s" % str(e))
+        module.log_info("РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ РІ Exel. Exception: %s" % str(e))    
+    
+    #РїРѕР»СѓС‡Р°РµРј РјР°СЃСЃРёРІ РґРЅРµР№ РІ РјРµСЃСЏС†Рµ
+    day_in_mount = arr_day_month(tekmonth, tekyear)
+    #РїРѕР»СѓС‡Р°РµРј РЅРѕРјРµСЂ СЃРµСЂРµРґРёРЅС‹ РјРµСЃСЏС†Р° РґР»СЏ РїРѕРґСЃС‡РµС‚Р° Р°РІР°РЅСЃР°
+    num_center_day = center_month(day_in_mount)
+    #РїРѕР»СѓС‡Р°РµРј РєРѕР»РёС‡РµСЃС‚РІРѕ С‡Р°СЃРѕРІ РІ РјРµСЃСЏС†Рµ Рё РґРѕ Р°РІР°РЅСЃР°, Рё РјР°СЃСЃРёРІ С‡Р°СЃРѕРІ СЂР°Р±РѕС‚С‹ РІ РґРЅРµ
+    sum_month = month_recount(day_in_mount, num_center_day)
+    #Р·Р°РїРёСЃС‹РІР°РµРј РІ Exel
+    if write_sum_month(sum_month[0], sum_month[1], num_center_day, sum_month[2], tekmonth, tekyear) == False:
+        module.log_info("РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ РІ Exel РІСЂРµРјСЏ РїСЂРёС…РѕРґР°.")
 
-#если комп выключался не на долгото не заполняем время прихода (возвращаем заполнять или не заполнять)
+
+#РµСЃР»Рё РєРѕРјРї РІС‹РєР»СЋС‡Р°Р»СЃСЏ РЅРµ РЅР° РґРѕР»РіРѕС‚Рѕ РЅРµ Р·Р°РїРѕР»РЅСЏРµРј РІСЂРµРјСЏ РїСЂРёС…РѕРґР° (РІРѕР·РІСЂР°С‰Р°РµРј Р·Р°РїРѕР»РЅСЏС‚СЊ РёР»Рё РЅРµ Р·Р°РїРѕР»РЅСЏС‚СЊ)
 def pc_reload(timeexit, starthour, startminute):
-    reload = module.read_reload()
-    #если строка пустая, выходим из программы, такого не должно быть
+    reload = int(module.read_setting(13))
+    #РµСЃР»Рё СЃС‚СЂРѕРєР° РїСѓСЃС‚Р°СЏ, РІС‹С…РѕРґРёРј РёР· РїСЂРѕРіСЂР°РјРјС‹, С‚Р°РєРѕРіРѕ РЅРµ РґРѕР»Р¶РЅРѕ Р±С‹С‚СЊ
     if timeexit == '':
-        module.log_info("pc reload = 2")
-        return 2    #неизвестная ошибка - продолжаем работу
+        module.log_info("pc reload = -2")
+        return -2    #РЅРµРёР·РІРµСЃС‚РЅР°СЏ РѕС€РёР±РєР° - РїСЂРѕРґРѕР»Р¶Р°РµРј СЂР°Р±РѕС‚Сѓ
     else:
-        hour_e = timeexit[0:2]      #часы
-        minut_e = timeexit[3:5]     #минуты
-    #считаем время ухода и прихода
+        hour_e = timeexit[0:2]      #С‡Р°СЃС‹
+        minut_e = timeexit[3:5]     #РјРёРЅСѓС‚С‹
+    #СЃС‡РёС‚Р°РµРј РІСЂРµРјСЏ СѓС…РѕРґР° Рё РїСЂРёС…РѕРґР°
     te = int(hour_e) + int(minut_e)/60
     ts = int(starthour) + int(startminute)/60
-    #если разность текущего прихода и ухода менее получаса, то не добавляйте новую строчку прихода
+    #РµСЃР»Рё СЂР°Р·РЅРѕСЃС‚СЊ С‚РµРєСѓС‰РµРіРѕ РїСЂРёС…РѕРґР° Рё СѓС…РѕРґР° РјРµРЅРµРµ РїРѕР»СѓС‡Р°СЃР°, С‚Рѕ РЅРµ РґРѕР±Р°РІР»СЏР№С‚Рµ РЅРѕРІСѓСЋ СЃС‚СЂРѕС‡РєСѓ РїСЂРёС…РѕРґР°
     if ts - te < (reload/60):
-        return 0    #уходили не на долго - выходим
-    else: return 1  #уходили на долго - продолжаем работу
+        return 0    #СѓС…РѕРґРёР»Рё РЅРµ РЅР° РґРѕР»РіРѕ - РІС‹С…РѕРґРёРј
+    else: return 1  #СѓС…РѕРґРёР»Рё РЅР° РґРѕР»РіРѕ - РїСЂРѕРґРѕР»Р¶Р°РµРј СЂР°Р±РѕС‚Сѓ
 
-#сравниваем время текущее с временем в Exel, если совпало, то не будем записывать
-def time_compare(sheet_nrows, sheet, j, tekhour, tekminute):
-    #получаем последнее время прихода
+#СЃСЂР°РІРЅРёРІР°РµРј РІСЂРµРјСЏ С‚РµРєСѓС‰РµРµ СЃ РІСЂРµРјРµРЅРµРј РІ Exel, РµСЃР»Рё СЃРѕРІРїР°Р»Рѕ РёР»Рё РјРµРЅСЊС€Рµ, С‚Рѕ РЅРµ Р±СѓРґРµРј Р·Р°РїРёСЃС‹РІР°С‚СЊ
+def time_compare(sheet_nrows, sheet, j, tekhour, tekminute, time_date_index):
+    shour = sminute = 0
+    #РїРѕР»СѓС‡Р°РµРј РїРѕСЃР»РµРґРЅРµРµ РІСЂРµРјСЏ РїСЂРёС…РѕРґР°
     i = sheet_nrows-1
-    while i > 0:
+    #РїРѕРєР° РјС‹ РІ С‚РµРєСѓС‰РµРј РґРЅРµ
+    
+    while (i >= time_date_index):#i > 0:
         lastdate = sheet.row_values(i)[j]
-        #если строка пустая, то ищем дату выше
+        #РµСЃР»Рё СЃС‚СЂРѕРєР° РїСѓСЃС‚Р°СЏ, С‚Рѕ РёС‰РµРј РґР°С‚Сѓ РІС‹С€Рµ
         if lastdate == '':
             i=i-1
         else:
-            shour = lastdate[0:2]  #день
-            sminute = lastdate[3:5]  #месяц
+            shour = lastdate[0:2]  #РґРµРЅСЊ
+            sminute = lastdate[3:5]  #РјРµСЃСЏС†
             break
-    #если время совпало с последним записанным временем - ничего не делаем. Выходим из программы
-    if (int(shour) == tekhour) and (int(sminute) == tekminute):
-        return 0    #текущая дата совпадает с последней записанной
-    else: return 1  #не совпадает
+    #РµСЃР»Рё РІСЂРµРјСЏ СЃРѕРІРїР°Р»Рѕ СЃ РїРѕСЃР»РµРґРЅРёРј Р·Р°РїРёСЃР°РЅРЅС‹Рј РІСЂРµРјРµРЅРµРј - РЅРёС‡РµРіРѕ РЅРµ РґРµР»Р°РµРј. Р’С‹С…РѕРґРёРј РёР· РїСЂРѕРіСЂР°РјРјС‹
+    if ((int(shour) == tekhour) and (int(sminute) >= tekminute)) or ((int(shour) > tekhour)):
+        return 0    #С‚РµРєСѓС‰Р°СЏ РґР°С‚Р° СЃРѕРІРїР°РґР°РµС‚ СЃ РїРѕСЃР»РµРґРЅРµР№ Р·Р°РїРёСЃР°РЅРЅРѕР№
+    else:
+        return 1  #РЅРµ СЃРѕРІРїР°РґР°РµС‚
         
-#действия при выходе из программы по кнопке
+#РґРµР№СЃС‚РІРёСЏ РїСЂРё РІС‹С…РѕРґРµ РёР· РїСЂРѕРіСЂР°РјРјС‹ РїРѕ РєРЅРѕРїРєРµ
 def quit_app():
-    #получаем текущую дату и время компа
+    #РїРѕР»СѓС‡Р°РµРј С‚РµРєСѓС‰СѓСЋ РґР°С‚Сѓ Рё РІСЂРµРјСЏ РєРѕРјРїР°
     tekdateandtimeExit = datetime.datetime.now()
-    '''
-    tekyear = tekdateandtimeExit.year   #Текущий год
-    tekmonth = tekdateandtimeExit.month #текущий месяц
-    tekday = tekdateandtimeExit.day     #текущее число
-    tekhour = tekdateandtimeExit.hour   #текущий час
-    tekminute = tekdateandtimeExit.minute    #текущая минута
-    '''
-    #дату записываем время выключения компьютера в файл
-    module.write_timeExit(tekdateandtimeExit.strftime("%d %m %Y %H:%M"))
     
-    #записываем время выключения компьютера
-    #exit_work(tekminute, tekhour, tekday, tekmonth, tekyear)
+    #Р·Р°РїРёСЃС‹РІР°РµРј РІСЂРµРјСЏ РІС‹РєР»СЋС‡РµРЅРёСЏ РєРѕРјРїСЊСЋС‚РµСЂР° РІ РЅР°СЃС‚СЂРѕРµС‡РЅС‹Р№ С„Р°Р№Р»
+    module.write_setting(tekdateandtimeExit.strftime("%d %m %Y %H:%M"), 25)
 
+#Р·Р°РїРёСЃС‹РІР°РµРј РІ Exel С„Р°Р№Р» РІСЂРµРјСЏ РїРѕСЃР»РµРґРЅРµРіРѕ РІС‹РєР»СЋС‡РµРЅРёСЏ РєРѕРјРїСЊСЋС‚РµСЂР°
 def write_exit():
-    #записываем в Exel файл время последнего выключения компьютера
-    dtimE = module.read_timeExit()
+        
+    dtimE = module.read_setting(25)
     dtimE = dtimE.split()
-    #если приложение закрыл не пользователь
+    #РµСЃР»Рё РїСЂРёР»РѕР¶РµРЅРёРµ Р·Р°РєСЂС‹Р» РЅРµ РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ
     if (dtimE != ''):
         timE = dtimE[-1]
         exit_work(int(timE[3:5]), int(timE[0:2]), int(dtimE[0]), int(dtimE[1]), int(dtimE[2]))
+    else:
+        msg = "dtimE = %s"% dtimE
+        module.log_info(msg)
+###############################################################################################
+#РїРѕР»СѓС‡Р°РµРј Р»РёСЃС‚ РёР· Exel С„Р°Р№Р»Р°
+def year_sheet(year):
+    #РїРѕР»СѓС‡Р°РµРј РїСѓС‚СЊ Рє С„Р°Р№Р»Сѓ Рё СЃРјРµС‰РµРЅРёРµ
+    wt_filename = module.read_setting(4) + '/' + module.read_setting(1)
+    
+    #РѕС‚РєСЂС‹РІР°РµРј РЅР°С€ Exel С„Р°Р№Р»
+    read_book = xlrd.open_workbook(str(wt_filename), formatting_info=True)
+    write_book = copy(read_book)
+    
+    #РџРµСЂРµС…РѕРґРёРј РЅР° Р»РёСЃС‚ С‚РµРєСѓС‰РµРіРѕ РіРѕРґР°
+    try:
+        #РµСЃР»Рё Р»РёСЃС‚ СЃ С‚РµРєСѓС‰РёРј РіРѕРґРѕРј СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚
+        sheet_index = read_book.sheet_names().index(str(year))
+    except:
+        #РµСЃР»Рё Р»РёСЃС‚Р° С‚РµРєСѓС‰РµРіРѕ РіРѕРґР° РЅРµС‚ Р·РЅР°С‡РёС‚ РїСЂРѕРіСЂР°РјРјР° start РЅРµ СЃСЂР°Р±РѕС‚Р°Р»Р°
+        module.log_info('year_sheet: РІ Exel С„Р°Р№Р»Рµ РѕС‚СЃСѓС‚СЃС‚РІСѓРµС‚ СЃС‚СЂР°РЅРёС†Р° %s' %year)
+        return 0
+    
+    #РІС‹Р±РёСЂР°РµРј Р°РєС‚РёРІРЅС‹Рј Р»РёСЃС‚ СЃ РЅР°С€РёРј РіРѕРґРѕРј
+    return read_book.sheet_by_index(sheet_index), write_book
+
+#С„СѓРЅРєС†РёСЏ РїРѕР»СѓС‡РµРЅРёСЏ РјР°СЃСЃРёРІР° РІСЂРµРјСЏРЅ РІ Р·Р°РґР°РЅРЅРѕРј РґРЅРµ
+def arr_time_day(day, month, year):
+    date = datetime.datetime.now()
+    tekmonth = date.month #С‚РµРєСѓС‰РёР№ РјРµСЃСЏС†
+    tekyear = date.year
+    tekday = date.day
+    
+    #РµСЃР»Рё РїРµСЂРµСЃС‡РёС‚С‹РІР°РµРјС‹Р№ РјРµСЃСЏС† Р±РѕР»СЊС€Рµ С‚РµРєСѓС‰РµРіРѕ
+    if year == tekyear and ((month == tekmonth) and (day > tekday)):
+        module.log_info("РЅРµРІРµСЂРЅС‹Р№ РґРµРЅСЊ = %s"% day)
+        return 1
+    elif year == tekyear and month > tekmonth:
+        module.log_info("РЅРµРІРµСЂРЅС‹Р№ РјРµСЃСЏС† = %s"% month)
+        return 1
+    elif(year > tekyear):
+        module.log_info("РЅРµРІРµСЂРЅС‹Р№ РіРѕРґ = %s"% year)
+        return 1
+
+    #РІС‹Р±РёСЂР°РµРј Р°РєС‚РёРІРЅС‹Рј Р»РёСЃС‚ СЃ РЅР°С€РёРј РіРѕРґРѕРј
+    exel_sheet = year_sheet(year)
+    sheet = exel_sheet[0]
+    #СЃС‚СЂРѕРєРѕРІР°СЏ Р·Р°РґР°РЅРЅР°СЏ РґР°С‚Р° Рё СЃР»РµРґСѓСЋС‰Р°СЏ
+    dan_date = str_date(day, month, year)
+    
+    #РёС‰РµРј РЅР°РёРјРµРЅРѕРІР°РЅРёРµ Р·Р°РґР°РЅРЅРѕРіРѕ РґРЅСЏ РІ С„Р°Р№Р»Рµ
+    i = sheet.nrows-1
+    while sheet.row_values(i)[0] != dan_date and i > 0:
+        i=i-1
+    if i == 0:
+        return 1
+        
+    index_sumS = i  #Р·Р°РїРѕРјРёРЅР°РµРј СЃС‚СЂРѕРєСѓ, c РЅР°С‡Р°Р»РѕРј Р·Р°РґР°РЅРЅРѕРіРѕ РґРЅСЏ
+    #РёС‰РµРј РЅР°РёРјРµРЅРѕРІР°РЅРёРµ СЃР»РµРґСѓСЋС‰РµРіРѕ РґРЅСЏ РІ С„Р°Р№Р»Рµ (РёР»Рё РєРѕРЅРµС† С„Р°Р№Р»Р°)
+    for i in range(index_sumS, sheet.nrows):
+        if (sheet.row_values(i)[0] != dan_date and sheet.row_values(i)[0] != ''):
+            index_sumE = i-1      #Р·Р°РїРѕРјРёРЅР°РµРј СЃС‚СЂРѕРєСѓ, c РЅР°С‡Р°Р»РѕРј СЃР»РµРґСѓСЋС‰РµРіРѕ РјРµСЃСЏС†Р° РјРµСЃСЏС†Р°
+            break
+        else: index_sumE = i    #РёР»Рё Р·Р°РїРѕРјРёРЅР°РµРј РєРѕРЅРµС† СЃС‚СЂРѕРєРё, РµСЃР»Рё СЃР»РµРґСѓСЋС‰РµРіРѕ РјРµСЃСЏС†Р° РЅРµС‚
+    
+    #РѕР±РЅСѓР»РµРЅРёРµ РІСЂРµРјРµРЅ
+    timestart = []
+    timeexit = []
+    i = index_sumS
+    #Р·Р°РїРёСЃС‹РІР°РµРј РІСЂРµРјРµРЅР°
+    for i in range(index_sumS, index_sumE+1):
+        #РµСЃР»Рё СЃС‚СЂРѕРєР° РїСѓСЃС‚Р°СЏ, С‚Рѕ РёС‰РµРј РІСЂРµРјСЏ РґР°Р»СЊС€Рµ
+        if sheet.row_values(i)[1] == '':
+            i=i+1
+        else:
+            timestart.append(sheet.row_values(i)[1])
+    for i in range(index_sumS, index_sumE+1):
+        if sheet.row_values(i)[2] == '':
+            i=i+1
+        else:
+            timeexit.append(sheet.row_values(i)[2])
+    #РІРѕР·РІСЂР°С‰Р°РµРј РјР°СЃСЃРёРІ РІСЂРµРјРµРЅ
+    return timestart, timeexit
+
+#РїРµСЂРµРІРѕРґ РґР°С‚С‹ РёР· int РІ str, РІ С„РѕСЂРјР°С‚Рµ dd.mm.yyyy
+def str_date(day, month, year):
+    if day < 10 and month < 10:
+        return ('0'+str(day)+'.0'+str(month)+'.'+str(year))
+    elif day < 10 and month >= 10:
+        return('0'+str(day)+'.'+str(month)+'.'+str(year))
+    elif day >= 10 and month < 10:
+        return(''+str(day)+'.0'+str(month)+'.'+str(year))
+    else:
+        return(str(day)+'.'+str(month)+'.'+str(year))     
+
+#РїРµСЂРµРІРѕРґ РІСЂРµРјРµРЅРё РІ С‡РёСЃР»РѕРІРѕР№ С„РѕСЂРјР°С‚ СЃ РѕРєСЂСѓРіР»РµРЅРёРµРј РґРѕ С‚СЂРµС‚СЊРµРіРѕ Р·РЅР°РєР°
+def convert_time(time):
+    #РІС‹РґРµР»СЏРµРј С‡Р°СЃС‹ Рё РјРёРЅСѓС‚С‹ РїСЂРёС…РѕРґР°
+    hr_start = time[0:2]  #С‡Р°СЃС‹
+    min_start = time[3:5]  #РјРёРЅСѓС‚С‹
+    return round((int(hr_start) + int(min_start)/60),3)
+
+#С„СѓРЅРєС†РёСЏ РґР»СЏ РІС‹С‡РёСЃР»РµРЅРёСЏ С‡Р°СЃРѕРІ РІ Р·Р°РґР°РЅРЅРѕРј РґРЅРµ
+def time_in_day(timestart, timeexit):
+    diner = int(module.read_setting(7))
+    #РїРµСЂРµРІРѕРґРёРј РІ С‡РёСЃР»РµРЅРЅРѕРµ РїСЂРµРґСЃС‚Р°РІР»РµРЅРёРµ РІСЂРµРјРµРЅРё
+    sum_time = 0
+    diner_time = 0
+    for i in range(len(timestart)):
+        timestart[i] = convert_time(timestart[i])
+    for i in range(len(timeexit)):
+        timeexit[i] = convert_time(timeexit[i])
+    
+    #РІС‹С‡РёСЃР»СЏРµРј РѕС‚СЂР°Р±РѕС‚Р°РЅРЅРѕРµ РІСЂРµРјСЏ РІ РґРЅРµ
+    for i in range(len(timestart)):
+        try:
+            sum_time += (timeexit[i] - timestart[i])
+        except:
+            None
+        #РІС‹С‡РёСЃР»СЏРµРј РѕР±РµРґ
+        try:
+            diner_time += (timestart[i+1] - timeexit[i])
+        except:
+            None
+    
+    #РµСЃР»Рё РІ РґРЅРµ РѕС‚СЂР°Р±РѕС‚Р°РЅРѕ Р±РѕР»СЊС€Рµ 4 С‡Р°СЃРѕРІ - РІС‹С‡РёС‚Р°РµРј РѕР±РµРґ РёР· РѕС‚СЂР°Р±РѕС‚Р°РЅРЅС‹С… С‡Р°СЃРѕРІ
+    sum_time = round(sum_time,3)
+    if sum_time > 4:
+        if diner_time > diner/60:
+            sum_time = round(sum_time,3)
+        else:
+            sum_time = round(sum_time - (diner/60 - diner_time),3)
+    return sum_time
+
+#С„СѓРЅРєС†РёСЏ РґР»СЏ РїРѕР»СѓС‡РµРЅРёСЏ РјР°СЃСЃРёРІР° РґРЅРµР№ РІ РјРµСЃСЏС†Рµ
+def arr_day_month(month, year):
+    #РІС‹Р±РёСЂР°РµРј Р°РєС‚РёРІРЅС‹Рј Р»РёСЃС‚ СЃ РЅР°С€РёРј РіРѕРґРѕРј
+    exel_sheet = year_sheet(year)
+    sheet = exel_sheet[0]
+    
+    #РёС‰РµРј РЅР°РёРјРµРЅРѕРІР°РЅРёРµ Р·Р°РґР°РЅРЅРѕРіРѕ РјРµСЃСЏС†Р° РІ С„Р°Р№Р»Рµ
+    i = sheet.nrows-1
+    while sheet.row_values(i)[0] != month_word[month-1]:
+        i=i-1
+    index_sumS = i+1  #Р·Р°РїРѕРјРёРЅР°РµРј СЃС‚СЂРѕРєСѓ, c РЅР°С‡Р°Р»РѕРј Р·Р°РґР°РЅРЅРѕРіРѕ РјРµСЃСЏС†Р°
+    #РёС‰РµРј РЅР°РёРјРµРЅРѕРІР°РЅРёРµ СЃР»РµРґСѓСЋС‰РµРіРѕ РјРµСЃСЏС†Р° РІ С„Р°Р№Р»Рµ (РёР»Рё РєРѕРЅРµС† С„Р°Р№Р»Р°)
+    for i in range(index_sumS+1, sheet.nrows):
+        for j in range(len(month_word)):
+            if (sheet.row_values(i)[0] == month_word[j]):
+                index_sumE = i-1      #Р·Р°РїРѕРјРёРЅР°РµРј СЃС‚СЂРѕРєСѓ, c РЅР°С‡Р°Р»РѕРј СЃР»РµРґСѓСЋС‰РµРіРѕ РјРµСЃСЏС†Р°
+                break
+            else:
+                index_sumE = i    #РёР»Рё Р·Р°РїРѕРјРёРЅР°РµРј РєРѕРЅРµС† СЃС‚СЂРѕРєРё, РµСЃР»Рё СЃР»РµРґСѓСЋС‰РµРіРѕ РјРµСЃСЏС†Р° РЅРµС‚
+        if (sheet.row_values(i)[0] == month_word[j]):
+            break
+    
+    #РѕС‚ РЅР°С‡Р°Р»Р° РјРµСЃСЏС†Р° РґРѕ РєРѕРЅС†Р° РјР°СЃСЃРёРІ РґРЅРµР№ РІ РјРµСЃСЏС†Рµ
+    month_day = []
+    for i in range(index_sumS, index_sumE+1):
+        if sheet.row_values(i)[0] == '':
+            i=i+1
+        else:
+            #Р·Р°РїРёСЃС‹РІР°РµРј РІ РјР°СЃСЃРёРІ РґРЅРµР№ РІ РјРµСЃСЏС†Рµ
+            month_day.append(sheet.row_values(i)[0])
+    return month_day
+
+#С„СѓРЅРєС†РёСЏ РґР»СЏ РІС‹РІРѕРґР° РЅРѕРјРµСЂР° РґРЅСЏ Р°РІР°РЅСЃР°
+def center_month(month_day):
+    if len(month_day) >= 1:
+        for i in range(1, len(month_day)):
+            day_old = month_day[i-1]
+            day = month_day[i]
+            if (int(day[:2]) > 15) and (int(day_old[:2]) <= 15):
+                return i-1
+    else:
+        day = month_day[0]
+        if (int(day[:2]) >= 15):
+            return 0
+    return -1
+
+#Р¤СѓРЅРєС†РёСЏ РґР»СЏ РїРѕРґСЃС‡РµС‚Р° С‡Р°СЃРѕРІ РІ РјРµСЃСЏС†Рµ
+def month_recount(month_day, num_cent_day):
+    sum_month_time = 0
+    sum_center_month = 0
+    sum_day_time = []
+    time = []
+    for i in range(len(month_day)):
+        #РїРѕР»СѓС‡Р°РµРј РјР°СЃСЃРёРІ РІСЂРµРјРµРЅ РІ РґРЅРµ
+        day = month_day[i]
+        time = arr_time_day(int(day[:2]), int(day[3:5]), int(day[6:]))
+        #РµСЃР»Рё РјР°СЃСЃРёРІ РїРѕР»СѓС‡РµРЅ РЅРѕСЂРјР°Р»СЊРЅРѕ, РІС‹С‡РёСЃР»СЏРµРј СЃСѓРјРјСѓ РІ РјРµСЃСЏС†Рµ Рё РјР°СЃСЃРёРІ СЂР°Р±РѕС‡РёС… С‡Р°СЃРѕРІ РІ РґРЅРµ
+        if time != 1:
+            day_time = time_in_day(time[0], time[1])
+            sum_day_time.append(day_time)
+            sum_month_time = sum_month_time + day_time
+            if i == num_cent_day:
+                sum_center_month = sum_month_time
+    return round(sum_month_time, 3), round(sum_center_month, 3), sum_day_time
+
+#Р¤СѓРЅРєС†РёСЏ РїРѕР»СѓС‡РµРЅРёСЏ РјР°СЃСЃРёРІР° РјРµСЃСЏС†РµРІ
+def arr_month_year(year):
+    date = datetime.datetime.now()
+    tekyear = date.year #С‚РµРєСѓС‰РёР№ РјРµСЃСЏС†
+    
+    #РµСЃР»Рё РїРµСЂРµСЃС‡РёС‚С‹РІР°РµРјС‹Р№ РјРµСЃСЏС† Р±РѕР»СЊС€Рµ С‚РµРєСѓС‰РµРіРѕ
+    if year > tekyear:
+        module.log_info('arr_month_year: РЅРµРІРµСЂРЅС‹Р№ РіРѕРґ %s' %year)
+        return 1
+
+    #РІС‹Р±РёСЂР°РµРј Р°РєС‚РёРІРЅС‹Рј Р»РёСЃС‚ СЃ РЅР°С€РёРј РіРѕРґРѕРј
+    exel_sheet = year_sheet(year)
+    sheet = exel_sheet[0]
+    
+    #РёС‰РµРј РЅР°РёРјРµРЅРѕРІР°РЅРёРµ РјРµСЃСЏС†РµРІ РІ С„Р°Р№Р»Рµ
+    year_month = []
+    for i in range(sheet.nrows):
+        for j in range(len(month_word)):
+            if sheet.row_values(i)[0] == month_word[j]:
+                #Р·Р°РїРёСЃС‹РІР°РµРј С‡РёСЃР»РѕРІС‹Рµ Р·РЅР°С‡РµРЅРёСЏ РјРµСЃСЏС†Р°
+                year_month.append(j+1)
+                break
+            j=j+1
+        i=i+1
+    return year_month
+
+#Р¤СѓРЅРєС†РёСЏ РґР»СЏ РїРѕРґСЃС‡РµС‚Р° С‡Р°СЃРѕРІ РІ РєР°Р¶РґРѕРј РјРµСЃСЏС†Рµ РіРѕРґР°  
+def year_recount(year):
+    #РїРѕР»СѓС‡Р°РµРј РјР°СЃСЃРёРІ РјРµСЃСЏС†РµРІ
+    year_month = arr_month_year(year)
+    #РІ С†РёРєР»Рµ РІС‹С‡РёСЃР»СЏРµРј РєРѕР»РёС‡РµСЃС‚РІРѕ СЂР°Р±РѕС‡РёС… С‡Р°СЃРѕРІ РІ РєР°Р¶РґРѕРј РёР· РјРµСЃСЏС†РµРІ
+    for i in range(len(year_month)):
+        #РїРѕР»СѓС‡Р°РµРј РјР°СЃСЃРёРІ РґРЅРµР№ РІ РјРµСЃСЏС†Рµ
+        day_in_mount = arr_day_month(year_month[i],year)
+        #РїРѕР»СѓС‡Р°РµРј РЅРѕРјРµСЂ СЃРµСЂРµРґРёРЅС‹ РјРµСЃСЏС†Р° РґР»СЏ РїРѕРґСЃС‡РµС‚Р° Р°РІР°РЅСЃР°
+        num_center_day = center_month(day_in_mount)
+        #РїРѕР»СѓС‡Р°РµРј РєРѕР»РёС‡РµСЃС‚РІРѕ С‡Р°СЃРѕРІ РІ РјРµСЃСЏС†Рµ Рё РґРѕ Р°РІР°РЅСЃР°, Рё РјР°СЃСЃРёРІ С‡Р°СЃРѕРІ СЂР°Р±РѕС‚С‹ РІ РґРЅРµ
+        sum_month = month_recount(day_in_mount, num_center_day)
+        #Р·Р°РїРёСЃС‹РІР°РµРј РІ Exel 
+        if(write_sum_month(sum_month[0], sum_month[1], num_center_day, sum_month[2], year_month[i], year) == False):
+            return False
+    return True    
+
+#Р·Р°РїРёСЃСЊ РІ Exel С„Р°Р№Р» РјР°СЃСЃРёРІР° С‡Р°СЃРѕРІ СЂР°Р±РѕС‚С‹ РІ РјРµСЃСЏС†Рµ Рё РјР°СЃСЃРёРІР° С‡Р°СЃРѕРІ СЂР°Р±РѕС‚С‹ РїРѕ РґРЅСЏРј РІ РјРµСЃСЏС†Рµ
+def write_sum_month(sum_month, sum_cnt_month, num_cnt_day, day_in_mount, month, year):
+    #РїРѕР»СѓС‡Р°РµРј РїСѓС‚СЊ Рє С„Р°Р№Р»Сѓ Рё СЃРјРµС‰РµРЅРёРµ
+    wt_filename = module.read_setting(4) + '/' + module.read_setting(1)
+    #РІС‹Р±РёСЂР°РµРј Р°РєС‚РёРІРЅС‹Рј Р»РёСЃС‚ СЃ РЅР°С€РёРј РіРѕРґРѕРј
+    #РѕС‚РєСЂС‹РІР°РµРј РЅР°С€ Exel С„Р°Р№Р»
+    read_book = xlrd.open_workbook(str(wt_filename), formatting_info=True)
+    write_book = copy(read_book)
+    
+    #РџРµСЂРµС…РѕРґРёРј РЅР° Р»РёСЃС‚ С‚РµРєСѓС‰РµРіРѕ РіРѕРґР°
+    try:
+        #РµСЃР»Рё Р»РёСЃС‚ СЃ С‚РµРєСѓС‰РёРј РіРѕРґРѕРј СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚
+        sheet_index = read_book.sheet_names().index(str(year))
+    except:
+        #РµСЃР»Рё Р»РёСЃС‚Р° С‚РµРєСѓС‰РµРіРѕ РіРѕРґР° РЅРµС‚ Р·РЅР°С‡РёС‚ РїСЂРѕРіСЂР°РјРјР° start РЅРµ СЃСЂР°Р±РѕС‚Р°Р»Р°
+        module.log_info('year_sheet: РІ Exel С„Р°Р№Р»Рµ РѕС‚СЃСѓС‚СЃС‚РІСѓРµС‚ СЃС‚СЂР°РЅРёС†Р° %s' %year)
+        return False
+    
+    #РІС‹Р±РёСЂР°РµРј Р°РєС‚РёРІРЅС‹Рј Р»РёСЃС‚ СЃ РЅР°С€РёРј РіРѕРґРѕРј
+    sheet = read_book.sheet_by_index(sheet_index)
+    
+    #РїРѕРёСЃРє Р·Р°РґР°РЅРЅРѕРіРѕ РјРµСЃСЏС†Р° РІ С„Р°Р№Р»Рµ
+    i = sheet.nrows-1
+    while sheet.row_values(i)[0] != month_word[month-1]:
+        i=i-1
+    index_month = i  #РёРЅРґРµРєСЃ СЃС‚СЂРѕРєРё РјРµСЃСЏС†Р°
+    #Р·Р°РїРѕР»РЅСЏРµРј СЃСѓРјРјСѓ С‡Р°СЃРѕРІ РІ СЃРѕРѕС‚РІРµС‚СЃС‚РІСѓСЋС‰СѓСЋ СЃС‚СЂРѕРєСѓ
+    write_book.get_sheet(sheet_index).write(index_month,1,str(sum_month))
+    
+    #РЅР°С‡РёРЅР°СЏ СЃ РЅР°С‡Р°Р»Р° РјРµСЃСЏС†Р° Рё РґРѕ РєРѕРЅС†Р° РјР°СЃСЃРёРІР°, Р·Р°РїРёСЃС‹РІР°РµРј С‡Р°СЃС‹
+    i_day = index_month + 1
+    i = 0
+    while (i < len(day_in_mount)):
+    #for i in range(len(day_in_mount)):
+        if sheet.row_values(i_day)[0] == '':
+            i_day=i_day+1
+        else:
+            #Р·Р°РїРёСЃС‹РІР°РµРј С‡Р°СЃС‹ РІ РґРЅРµ
+            write_book.get_sheet(sheet_index).write(i_day,3,str(day_in_mount[i]))
+            #Р·Р°РїРёСЃС‹РІР°РµРј РѕС‚СЂР°Р±РѕС‚Р°РЅРЅРѕРµ РєРѕР»-РІРѕ С‡Р°СЃРѕРІ РґРѕ Р°РІР°РЅСЃР°
+            if i == num_cnt_day:
+                write_book.get_sheet(sheet_index).write(i_day,4,'('+ str(sum_cnt_month)+')')
+            i_day=i_day+1
+            i = i+1
+    
+    #СЃРѕС…СЂР°РЅСЏРµРј Р·Р°РїРёСЃСЊ
+    try:
+        write_book.save(wt_filename)
+    except Exception as e:
+        module.log_info("РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ РІ Exel. Exception: %s" % str(e))
+        return False
+    return True
+
+#С„СѓРЅРєС†РёСЏ РґР»СЏ РїРѕР»СѓС‡РµРЅРёСЏ РјР°СЃСЃРёРІР° СЃ РіРѕРґР°РјРё, С…СЂР°РЅСЏС‰РёРјРёСЃСЏ РІ exel С„Р°Р№Р»Рµ
+def exel_year():
+    #РїРѕР»СѓС‡Р°РµРј РїСѓС‚СЊ Рє С„Р°Р№Р»Сѓ Рё СЃРјРµС‰РµРЅРёРµ
+    wt_filename = module.read_setting(4) + '/' + module.read_setting(1)
+    #РѕС‚РєСЂС‹РІР°РµРј РЅР°С€ Exel С„Р°Р№Р»
+    read_book = xlrd.open_workbook(str(wt_filename), formatting_info=True)
+    #РїРѕР»СѓС‡Р°РµРј РјР°СЃСЃРёРІ РіРѕРґРѕРІ
+    return read_book.sheet_names()

@@ -1,331 +1,95 @@
-# -*- coding: cp1251 -*-
+# -*- coding: utf-8 -*-
 '''
-Модули для записи и чтения из настроечного файла work_setting.txt
+РњРѕРґСѓР»Рё РґР»СЏ Р·Р°РїРёСЃРё Рё С‡С‚РµРЅРёСЏ РёР· РЅР°СЃС‚СЂРѕРµС‡РЅРѕРіРѕ С„Р°Р№Р»Р° work_setting.txt
 '''
-import os
+import os, datetime
 
-#запись в лог файл сбоев
+#Р·Р°РїРёСЃСЊ РІ Р»РѕРі С„Р°Р№Р» СЃР±РѕРµРІ + РґР°С‚С‹ СЃР±РѕСЏ
 def log_info(msg):
-    ''' пример вызова
-    module.log_info("hwnd: %s" % hwnd)
+    ''' РїСЂРёРјРµСЂ РІС‹Р·РѕРІР°
+    module.log_info("date: %s" % date)
     '''
-    f = open("work_setting\working_hour.log", "a")
-    f.write(msg + "\n")
+    #РїРѕР»СѓС‡Р°РµРј РІСЂРµРјСЏ СЃР±РѕСЏ
+    log_time = datetime.datetime.now()
+    #Р·Р°РїРёСЃС‹РІР°РµРј СЃР±РѕР№ РІ С„Р°Р№Р»
+    f = open("work_setting/working_hour.log", "a", encoding = 'utf-8')
+    f.write(msg + "            " + str(log_time) + "\n")
     f.close()
-    
-#получаем имя файла Exel из нашего настроечного файла
-def read_name():
-    #задаем стандартное имя фйла
-    WorkFile = 'Рабочее_время.xls'
-    
-    #читаем файл построчно и возвращаем первую строку
-    f = open('work_setting\work_setting.txt', 'r')
-    with f:
-        lines_name = f.readlines()
-        try:
-            WorkFile = lines_name[1]
-        except:
-            None
-    #без символа переноса строки
-    return WorkFile[:-1]
 
-#запись в настроечный файл нового имени файла
-def write_name(new_name):
-    #читаем файл построчно
-    f = open('work_setting\work_setting.txt', 'r')
+#СѓРЅРёРІРµСЂСЃР°Р»СЊРЅР°СЏ Р·Р°РїРёСЃСЊ РІ РЅР°СЃС‚СЂРѕРµС‡РЅС‹Р№ С„Р°Р№Р»
+def write_setting(date, num_setting):
+    #С‡РёС‚Р°РµРј С„Р°Р№Р» РїРѕСЃС‚СЂРѕС‡РЅРѕ
+    f = open('work_setting/work_setting.txt', 'r', encoding = 'utf-8')
     lines = f.readlines()
     f.close()
-    #заменяем первую строку на новую
-    #проверяем что в файле есть необходимая строка
-    if len(lines)-1 >= 1:
-        lines[1] = new_name + '\n'
-    #добавляем в конец списка новый путь
-    else:
-        lines.append(new_name)
-    #сохраняем весь список строк в файл
-    save_f = open('work_setting\work_setting.txt', 'w')
+    #Р·Р°РјРµРЅСЏРµРј Р·Р°РґР°РЅРЅСѓСЋ СЃС‚СЂРѕРєСѓ РЅР° РЅРѕРІСѓСЋ
+    #РїСЂРѕРІРµСЂСЏРµРј С‡С‚Рѕ РІ С„Р°Р№Р»Рµ РµСЃС‚СЊ РЅРµРѕР±С…РѕРґРёРјР°СЏ СЃС‚СЂРѕРєР°
+    if len(lines)-1 >= num_setting:
+        lines[num_setting] = str(date) + '\n'
+    #РґРѕР±Р°РІР»СЏРµРј РЅРѕРІСѓСЋ РЅР°СЃС‚СЂРѕР№РєСѓ
+    #else:
+        #lines.append(str(date))
+    #СЃРѕС…СЂР°РЅСЏРµРј РІРµСЃСЊ СЃРїРёСЃРѕРє СЃС‚СЂРѕРє РІ С„Р°Р№Р»
+    save_f = open('work_setting/work_setting.txt', 'w', encoding = 'utf-8')
     save_f.writelines(lines)
     save_f.close()
-
-#получаем путь к файлу Exel из нашего настроечного файла
-def read_path():
-    #узнаем текущий каталог для работы
-    WorkPath = os.path.dirname(os.path.realpath(__file__)) + '\Рабочее_время.xls'
     
-    #читаем файл построчно и возвращаем первую строку
-    f = open('work_setting\work_setting.txt', 'r')
+#СЃС‡РёС‚С‹РІР°РµРј РёР· С„Р°Р№Р»Р° Р·Р°РґР°РЅРЅРѕР№ СЃС‚СЂРѕРєРё
+def read_setting(num_setting):
+    #РѕР±РЅСѓР»СЏРµРј РїРµСЂРµРјРµРЅРЅСѓСЋ
+    date = '' #РЅРµ РІС‹СЃС‚Р°РІР»РµРЅ
+    
+    #С‡РёС‚Р°РµРј С„Р°Р№Р» РїРѕСЃС‚СЂРѕС‡РЅРѕ Рё РІРѕР·РІСЂР°С‰Р°РµРј 22 СЃС‚СЂРѕРєСѓ
+    f = open('work_setting/work_setting.txt', 'r', encoding = 'utf-8')
     with f:
         lines = f.readlines()
         try:
-            WorkPath = lines[4]
+            date = lines[num_setting]
         except:
-            None
-    #без символа переноса строки
-    return WorkPath[:-1]
+            log_info("РЅРµ СЃС‡РёС‚Р°Р»Р°СЃСЊ СЃС‚СЂРѕРєР°: %s" % num_setting)
+    #Р±РµР· СЃРёРјРІРѕР»Р° РїРµСЂРµРЅРѕСЃР° СЃС‚СЂРѕРєРё, РІРѕР·РІСЂР°С‰Р°РµРј С‚РёРї srt
+    return date[:-1]
 
-#запись в настроечный файл нового пути
-def write_path(new_path):
-    #читаем файл построчно
-    f = open('work_setting\work_setting.txt', 'r')
-    lines = f.readlines()
-    f.close()
-    #заменяем четверткю строку на новую
-    #проверяем что в файле есть необходимая строка
-    if len(lines)-1 >= 4:
-        lines[4] = new_path + '\n'
-    #добавляем в конец списка новый путь
-    else:
-        lines.append(new_path)
-    #сохраняем весь список строк в файл
-    save_f = open('work_setting\work_setting.txt', 'w')
-    save_f.writelines(lines)
-    save_f.close()
-
-#считываем из файла смещение
-def read_offset():
-    #узнаем текущий каталог для работы
-    WorkOffset = 0
-    
-    #читаем файл построчно и возвращаем первую строку
-    f = open('work_setting\work_setting.txt', 'r')
-    with f:
-        lines = f.readlines()
-        try:
-            WorkOffset = lines[7]
-        except:
-            None
-    #без символа переноса строки
-    return int(WorkOffset)
-    
-#записываем смещение в файл
-def write_offset(new_offset):
-    #читаем файл построчно
-    f = open('work_setting\work_setting.txt', 'r')
-    lines = f.readlines()
-    f.close()
-    #заменяем седьмую строку на новую
-    #проверяем что в файле есть необходимая строка
-    if len(lines)-1 >= 7:
-        lines[7] = str(new_offset) + '\n'
-    #добавляем в конец списка новый путь
-    else:
-        lines.append(str(new_offset))
-    #сохраняем весь список строк в файл
-    save_f = open('work_setting\work_setting.txt', 'w')
-    save_f.writelines(lines)
-    save_f.close()
-
-#считываем из файла допустимое время ухода
-def read_reload():
-    #обнуляем
-    WorkReload = 0
-    
-    #читаем файл построчно и возвращаем 10 строку
-    f = open('work_setting\work_setting.txt', 'r')
-    with f:
-        lines = f.readlines()
-        try:
-            WorkReload = lines[10]
-        except:
-            None
-    
-    return int(WorkReload)
-    
-#записываем смещение в файл
-def write_reload(new_reload):
-    #читаем файл построчно
-    f = open('work_setting\work_setting.txt', 'r')
-    lines = f.readlines()
-    f.close()
-    #заменяем 10 строку на новую
-    #проверяем что в файле есть необходимая строка
-    if len(lines)-1 >= 10:
-        lines[10] = str(new_reload) + '\n'
-    #добавляем в конец списка новый путь
-    else:
-        lines.append(str(new_reload))
-    #сохраняем весь список строк в файл
-    save_f = open('work_setting\work_setting.txt', 'w')
-    save_f.writelines(lines)
-    save_f.close()
-
-
-#считываем из файла выставлен или нет флаг чтения с сайта
-def read_check():
-    #узнаем текущий каталог для работы
-    CheckNum = 0 #не выставлен
-    
-    #читаем файл построчно и возвращаем 13 строку
-    f = open('work_setting\work_setting.txt', 'r')
-    with f:
-        lines = f.readlines()
-        try:
-            CheckNum = lines[13]
-        except:
-            None
-    #без символа переноса строки
-    return int(CheckNum)
-    
-#записываем флаг чтения с сайта в файл
-def write_checkt(new_check):
-    #читаем файл построчно
-    f = open('work_setting\work_setting.txt', 'r')
-    lines = f.readlines()
-    f.close()
-    #заменяем седьмую строку на новую
-    #проверяем что в файле есть необходимая строка
-    if len(lines)-1 >= 13:
-        lines[13] = str(new_check) + '\n'
-    #добавляем в конец списка новый путь
-    else:
-        lines.append(str(new_check))
-    #сохраняем весь список строк в файл
-    save_f = open('work_setting\work_setting.txt', 'w')
-    save_f.writelines(lines)
-    save_f.close()
-
-#считываем из файла номр сотрудника
-def read_number():
-    #узнаем текущий каталог для работы
-    CheckNum = 0 #не выставлен
-    
-    #читаем файл построчно и возвращаем 16 строку
-    f = open('work_setting\work_setting.txt', 'r')
-    with f:
-        lines = f.readlines()
-        try:
-            CheckNum = lines[16]
-        except:
-            None
-    #без символа переноса строки
-    return CheckNum[:-1]
-    
-#записываем в файл номер сотрудника
-def write_number(new_number):
-    #читаем файл построчно
-    f = open('work_setting\work_setting.txt', 'r')
-    lines = f.readlines()
-    f.close()
-    #заменяем 16 строку на новую
-    #проверяем что в файле есть необходимая строка
-    if len(lines)-1 >= 16:
-        lines[16] = str(new_number) + '\n'
-    #добавляем в конец списка новый путь
-    else:
-        lines.append(str(new_number))
-    #сохраняем весь список строк в файл
-    save_f = open('work_setting\work_setting.txt', 'w')
-    save_f.writelines(lines)
-    save_f.close()
-
-#запись в конец настроечного файла
-def write_timeShut(timeShut):
-    #читаем файл построчно
-    f = open('work_setting\work_setting.txt', 'r')
-    lines = f.readlines()
-    f.close()
-    #заменяем 19 строку на новую
-    #проверяем что в файле есть необходимая строка
-    if len(lines)-1 >= 19:
-        lines[19] = str(timeShut) + '\n'
-    #добавляем в конец списка новый путь
-    else:
-        lines.append(str(timeShut))
-    #сохраняем весь список строк в файл
-    save_f = open('work_setting\work_setting.txt', 'w')
-    save_f.writelines(lines)
-    save_f.close()
-    
-#считываем из файла последнюю строку (строку ухода с марса)
-def read_timeShut():
-    #обнуляем переменную
-    timeShut = 0 #не выставлен
-    
-    #читаем файл построчно и возвращаем 19 строку
-    f = open('work_setting\work_setting.txt', 'r')
-    with f:
-        lines = f.readlines()
-        try:
-            timeShut = lines[19]
-        except:
-            None
-    #без символа переноса строки
-    return timeShut[:-1]
-
-#запись в конец настроечного файла
-def write_timeExit(timeExit):
-    #читаем файл построчно
-    f = open('work_setting\work_setting.txt', 'r')
-    lines = f.readlines()
-    f.close()
-    #заменяем 22 строку на новую
-    #проверяем что в файле есть необходимая строка
-    if len(lines)-1 >= 22:
-        lines[22] = str(timeExit) + '\n'
-    #добавляем в конец списка новый путь
-    else:
-        lines.append(str(timeExit))
-    #сохраняем весь список строк в файл
-    save_f = open('work_setting\work_setting.txt', 'w')
-    save_f.writelines(lines)
-    save_f.close()
-    
-#считываем из файла последнюю строку (строку ухода с марса)
-def read_timeExit():
-    #обнуляем переменную
-    timeExit = 0 #не выставлен
-    
-    #читаем файл построчно и возвращаем 22 строку
-    f = open('work_setting\work_setting.txt', 'r')
-    with f:
-        lines = f.readlines()
-        try:
-            timeExit = lines[22]
-        except:
-            None
-    #без символа переноса строки
-    return timeExit[:-1]
-
-#читаем из файла инструкцию
+#С‡РёС‚Р°РµРј РёР· С„Р°Р№Р»Р° РёРЅСЃС‚СЂСѓРєС†РёСЋ
 def read_help():
-    #читаем файл построчно
-    f = open('work_setting\work_help.txt', 'r')
+    #С‡РёС‚Р°РµРј С„Р°Р№Р» РїРѕСЃС‚СЂРѕС‡РЅРѕ
+    f = open('work_setting/work_help.txt', 'r', encoding = 'utf-8')
     text = f.read()
     f.close()
     
     return str(text)
 
-#создание нового exel файла
+#СЃРѕР·РґР°РЅРёРµ РЅРѕРІРѕРіРѕ exel С„Р°Р№Р»Р°
 def new_timework_file(path):
     f = open(path, 'w')
     f.close()
 
-#сохранение в файл
+#СЃРѕС…СЂР°РЅРµРЅРёРµ РІ С„Р°Р№Р» (РЅРµ РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ)
 def save_setting(new_path, mode):
     
-    old_WorkPath = read_path()              #читаем старое значение пути
-    old_WorkName = read_name()              #читаем старое значение имени файла
-    WorkPath = os.path.dirname(new_path)    #путь папки в которой лежит файл
-    WorkName = os.path.basename(new_path)   #имя файла
+    old_WorkPath = read_setting(4)              #С‡РёС‚Р°РµРј СЃС‚Р°СЂРѕРµ Р·РЅР°С‡РµРЅРёРµ РїСѓС‚Рё
+    old_WorkName = read_setting(1)              #С‡РёС‚Р°РµРј СЃС‚Р°СЂРѕРµ Р·РЅР°С‡РµРЅРёРµ РёРјРµРЅРё С„Р°Р№Р»Р°
+    WorkPath = os.path.dirname(new_path)    #РїСѓС‚СЊ РїР°РїРєРё РІ РєРѕС‚РѕСЂРѕР№ Р»РµР¶РёС‚ С„Р°Р№Р»
+    WorkName = os.path.basename(new_path)   #РёРјСЏ С„Р°Р№Р»Р°
     
-    #перезапись
+    #РїРµСЂРµР·Р°РїРёСЃСЊ
     if(mode == 'Repace'):
-        #если выбранный каталог существует перемещаем туда файл с новым именем
+        #РµСЃР»Рё РІС‹Р±СЂР°РЅРЅС‹Р№ РєР°С‚Р°Р»РѕРі СЃСѓС‰РµСЃС‚РІСѓРµС‚ РїРµСЂРµРјРµС‰Р°РµРј С‚СѓРґР° С„Р°Р№Р» СЃ РЅРѕРІС‹Рј РёРјРµРЅРµРј
         if os.path.exists(WorkPath):        
-            #копировать файл, даже если такое имя уже существует
+            #РєРѕРїРёСЂРѕРІР°С‚СЊ С„Р°Р№Р», РґР°Р¶Рµ РµСЃР»Рё С‚Р°РєРѕРµ РёРјСЏ СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚
             os.replace((old_WorkPath + '/' + old_WorkName),(WorkPath + '/' + WorkName))
             save_warning = 2
-            #запись в настроечный файл нового имени файда
-            write_name(WorkName)
-            #запись в настроечный файл нового пути
-            write_path(WorkPath)
+            #Р·Р°РїРёСЃСЊ РІ РЅР°СЃС‚СЂРѕРµС‡РЅС‹Р№ С„Р°Р№Р» РЅРѕРІРѕРіРѕ РёРјРµРЅРё С„Р°Р№РґР°
+            write_setting(WorkName,1)
+            #Р·Р°РїРёСЃСЊ РІ РЅР°СЃС‚СЂРѕРµС‡РЅС‹Р№ С„Р°Р№Р» РЅРѕРІРѕРіРѕ РїСѓС‚Рё
+            write_setting(WorkPath,4)
     elif (mode == 'New'):
         save_warning = 1
-        #создаем файл
+        #СЃРѕР·РґР°РµРј С„Р°Р№Р»
         new_file = os.open((WorkPath + '/' + WorkName),os.O_CREAT)
         os.close(new_file)
-    #возвращаем в вызываемый модуль читанные из настроечного файла путь и имя файла
-    #и ошибку, если таковая имеется: 0-все хорошо, 1-недопустимая директория, 2-имя файла не существует)
-    return read_path(), read_name(), save_warning
+    #РІРѕР·РІСЂР°С‰Р°РµРј РІ РІС‹Р·С‹РІР°РµРјС‹Р№ РјРѕРґСѓР»СЊ С‡РёС‚Р°РЅРЅС‹Рµ РёР· РЅР°СЃС‚СЂРѕРµС‡РЅРѕРіРѕ С„Р°Р№Р»Р° РїСѓС‚СЊ Рё РёРјСЏ С„Р°Р№Р»Р°
+    #Рё РѕС€РёР±РєСѓ, РµСЃР»Рё С‚Р°РєРѕРІР°СЏ РёРјРµРµС‚СЃСЏ: 0-РІСЃРµ С…РѕСЂРѕС€Рѕ, 1-РЅРµРґРѕРїСѓСЃС‚РёРјР°СЏ РґРёСЂРµРєС‚РѕСЂРёСЏ, 2-РёРјСЏ С„Р°Р№Р»Р° РЅРµ СЃСѓС‰РµСЃС‚РІСѓРµС‚)
+    return read_setting(4), read_setting(1), save_warning
         
         
