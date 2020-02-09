@@ -19,34 +19,43 @@ def log_info(msg):
 #универсальная запись в настроечный файл
 def write_setting(date, num_setting):
     #читаем файл построчно
-    f = open('work_setting/work_setting.txt', 'r', encoding = 'utf-8')
-    lines = f.readlines()
-    f.close()
+    try:
+        f = open('work_setting/work_setting.txt', 'r', encoding = 'utf-8')
+        lines = f.readlines()
+    except:
+        log_info("write_setting: не удалось открыть файл")
+    finally:
+        f.close()
+    
     #заменяем заданную строку на новую
     #проверяем что в файле есть необходимая строка
     if len(lines)-1 >= num_setting:
         lines[num_setting] = str(date) + '\n'
-    #добавляем новую настройку
-    #else:
-        #lines.append(str(date))
     #сохраняем весь список строк в файл
-    save_f = open('work_setting/work_setting.txt', 'w', encoding = 'utf-8')
-    save_f.writelines(lines)
-    save_f.close()
-    
+    try:
+        save_f = open('work_setting/work_setting.txt', 'w', encoding = 'utf-8')
+        save_f.writelines(lines)
+    except:
+        log_info("write_setting: не удалось записать в файл %s %s"%(date, num_setting))
+    finally:
+        save_f.close()
 #считываем из файла заданной строки
 def read_setting(num_setting):
     #обнуляем переменную
     date = '' #не выставлен
-    
-    #читаем файл построчно и возвращаем 22 строку
-    f = open('work_setting/work_setting.txt', 'r', encoding = 'utf-8')
-    with f:
-        lines = f.readlines()
-        try:
-            date = lines[num_setting]
-        except:
-            log_info("не считалась строка: %s" % num_setting)
+    #делаем 10 попыток чтения
+    for cnt_read in range(10):
+        #читаем файл построчно и возвращаем 22 строку
+        f = open('work_setting/work_setting.txt', 'r', encoding = 'utf-8')
+        with f:
+            lines = f.readlines()
+            try:
+                date = lines[num_setting]
+                break
+            except:
+                log_info("read_setting: не считалась строка: %s %d раз" % (num_setting, cnt_read+1))
+    else:
+        log_info("read_setting: не удалось считать строку: %s" % num_setting)
     #без символа переноса строки, возвращаем тип srt
     return date[:-1]
 

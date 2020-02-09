@@ -503,7 +503,7 @@ class MainWindow(QWidget):
         self.tray_icon.showMessage(             #выводим сообщение
                 "System Tray",
                 "Программа свернута",
-                QIcon('icon\Bill.jpg'),
+                QIcon('icon\Bill.ico'),
                 1
             )
         #event.accept()                          #'''не забыть закоментировать!!!!'''

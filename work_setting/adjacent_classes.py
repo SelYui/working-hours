@@ -177,9 +177,9 @@ class ProgressRecount(QDialog):
     
     #функция для которой расчитывается прогресс
     def doAction(self, value):
-        self.show()
         self.pbar.setValue(value)
-        #if value >= 100:
+        if value >= 100:
+            time.sleep(1)   #для того что бы было видно 100%
         
     #показываем окно, блокируя другие
     def on_show_act(self):
