@@ -22,16 +22,9 @@ def start_work(tekminute, tekhour, tekday, tekmonth, tekyear):
     '''
     #получаем путь к файлу и смещение
     wt_filename = module.read_setting(4) + '/' + module.read_setting(1)
-    min_offset = int(module.read_setting(10))
+    
     #обнуление начальных условий
     flg_dontdata = False    #обнуляем признак незаполнения даты
-    
-    #вычитаем смещение из минут
-    if tekminute - min_offset >= 0:
-        tekminute = tekminute - min_offset
-    else:
-        tekhour = tekhour - 1
-        tekminute = 60 + (tekminute - min_offset)
     
     #открываем наш Exel файл
     try:
@@ -172,14 +165,6 @@ def exit_work(tekminute, tekhour, tekday, tekmonth, tekyear):
     '''
     #получаем путь к файлу и смещение
     wt_filename = module.read_setting(4) + '/' + module.read_setting(1)
-    min_offset = int(module.read_setting(10))
-    
-    #вычитаем смещение из минут
-    if tekminute + min_offset < 60:
-        tekminute = tekminute + min_offset
-    else:
-        tekhour = tekhour + 1
-        tekminute = (tekminute + min_offset) - 60
     
     #открываем наш Exel файл
     try:
@@ -359,7 +344,19 @@ def write_exit():
     #если приложение закрыл не пользователь
     if (dtimE != ''):
         timE = dtimE[-1]
-        exit_work(int(timE[3:5]), int(timE[0:2]), int(dtimE[0]), int(dtimE[1]), int(dtimE[2]))
+        
+        #получаем смещение
+        min_offset = int(module.read_setting(10))
+        minute = int(timE[3:5])
+        hour = int(timE[0:2])
+        #вычитаем смещение из минут
+        if minute + min_offset < 60:
+            minute = minute + min_offset
+        else:
+            hour = hour + 1
+            minute = (minute + min_offset) - 60
+        
+        exit_work(minute, hour, int(dtimE[0]), int(dtimE[1]), int(dtimE[2]))
     else:
         msg = "dtimE = %s"% dtimE
         module.log_info(msg)
@@ -532,6 +529,7 @@ def arr_day_month(month, year):
         i=i-1
         temp = read_excel(read_book, sheet, i, 0)
     index_sumS = i+1  #запоминаем строку, c началом заданного месяца
+    index_sumE = sheet.nrows-1
     #ищем наименование следующего месяца в файле (или конец файла)
     for i in range(index_sumS+1, sheet.nrows):
         temp = read_excel(read_book, sheet, i, 0)

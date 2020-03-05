@@ -109,13 +109,15 @@ def web_main():
                     #записываем время прихода на работу
                     work_time.start_work(int(timeS[3:5]), int(timeS[0:2]), tekday, tekmonth, tekyear)
                 except:
-                    module.log_info('не удалось записать время прихода')
+                    None
+                    #module.log_info('не удалось записать время прихода')
                 try:
                     timeE = timeexit[i]
                     #записываем время ухода
                     work_time.exit_work(int(timeE[3:5]), int(timeE[0:2]), tekday, tekmonth, tekyear)
                 except:
-                    module.log_info('не удалось записать время ухода')
+                    None
+                    #module.log_info('не удалось записать время ухода')
                 i=i+1
 
             try:

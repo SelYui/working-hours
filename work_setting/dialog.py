@@ -44,8 +44,9 @@ class MainWindow(QWidget):
         self.obj.show_wnd.connect(self.wind.on_show_wnd)    #показываем окно с счетчиком
         self.obj.finished_global.connect(self.thread.quit)  #конец потока
         self.obj_progress.count_changed.connect(self.act.doAction)    #сигнал для вывода прогресса пересчета
-        self.obj_progress.show_act.connect(self.act.on_show_act)
-        self.obj_progress.not_recount.connect(self.do_not_rec)
+        self.obj_progress.show_act.connect(self.act.on_show_act)    #показываем прогресс
+        self.obj_progress.not_recount.connect(self.do_not_rec)      #не удалось пересчитать
+        self.obj_progress.donot_open.connect(self.donot_open)       #не удалось открыть файл
         self.obj_progress.finished_progress.connect(self.thread_progress.quit)
         #подключаем сигнал потокового подключения к методу
         self.thread.started.connect(self.obj.ShutOrWeb)
@@ -309,7 +310,7 @@ class MainWindow(QWidget):
     #диалоговое окно выбора нового файла
     def getfile(self):
         dir_path = module.read_setting(4) + '/' + module.read_setting(1)
-        fname = QFileDialog.getOpenFileName(self, 'Выбрать файл', dir_path, 'Exel files (*.xls)')
+        fname = QFileDialog.getOpenFileName(self, 'Выбрать файл', dir_path, 'Exel files (*.xls *.xlsx)')
         #если новый файл выбран, переписываем путь в настройках и в наших текстовых виджетах
         if fname != ('', ''):
             new_dir = os.path.dirname(fname[0])    #путь папки в которой лежит файл
@@ -324,7 +325,7 @@ class MainWindow(QWidget):
     #диалоговое окно сохранения нового файла (не используется)
     def savefile(self):
         dir_path = module.read_setting(4) + '/' + module.read_setting(1)
-        fname = QFileDialog.getSaveFileName(self, 'Выбрать файл', dir_path, 'Exel files (*.xls)')
+        fname = QFileDialog.getSaveFileName(self, 'Выбрать файл', dir_path, 'Exel files (*.xls *.xlsx)')
         #если новый файл выбран, переписываем путь в настройках и в наших текстовых виджетах
         if fname != ('', ''):
             new_dir = module.save_setting(fname[0],'Repace')
@@ -404,12 +405,22 @@ class MainWindow(QWidget):
     def opendirectory(self):
         path_file = module.read_setting(4) + '/' + module.read_setting(1)
         if os.name == 'nt':
-            os.startfile(os.path.dirname(path_file))    #открыть каталог с файлом
-            os.startfile(path_file)                     #запуск файла
+            try:
+                os.startfile(os.path.dirname(path_file))    #открыть каталог с файлом
+                os.startfile(path_file)                     #запуск файла
+            except:
+                self.donot_open()
         else:
-            opener = "open"
-            subprocess.call([opener, path_file])
+            try:
+                opener = "open"
+                subprocess.call([opener, path_file])
+            except:
+                self.donot_open()
         
+    #не могу открыть файл
+    def donot_open(self):
+        QMessageBox.warning(self, 'Предупреждение','Не могу открыть файл')
+    
     #открываем подсказку для выяснения номера на сайте
     def openhelp(self):
         #откроем дочернее окно с инструкцией
@@ -453,17 +464,17 @@ class MainWindow(QWidget):
             if int(module.read_setting(16)) == 0:
                 QMessageBox.warning(self, 'Предупреждение',chtext)
             
-            module.write_setting('0',10)        #записываем в настроечный файл нулевое смещение
-            WorkOffset = int(module.read_setting(10))
+            #module.write_setting('0',10)        #записываем в настроечный файл нулевое смещение
+            #WorkOffset = int(module.read_setting(10))
             module.write_setting('0',13)        #записываем в настроечный файл нулевой выход
             WorkReload = int(module.read_setting(13))
             
             self.lenum.setEnabled(True)    #делаем строку ввода индивидуального номера активной
             self.leshut.setEnabled(True)        #делаем строку активной
-            self.spb.setEnabled(False)      #делаем виджет ввода смещеня неактивным
+            #self.spb.setEnabled(False)      #делаем виджет ввода смещеня неактивным
             self.spblered.setEnabled(False)    #делает виджет ввода возможного ухода неактивным
             
-            self.spb.setValue(WorkOffset)   #обнуляем смещение
+            #self.spb.setValue(WorkOffset)   #обнуляем смещение
             self.spblered.setValue(WorkReload)   #обнуляем reload
             
             #записываем в файл состояние виджета
@@ -472,7 +483,7 @@ class MainWindow(QWidget):
         else:
             self.lenum.setEnabled(False)    #делаем строку ввода индивидуального номера неактивной
             self.leshut.setEnabled(False)        #делаем строку неактивной
-            self.spb.setEnabled(True)      #делаем виджет ввода смещеня активным
+            #self.spb.setEnabled(True)      #делаем виджет ввода смещеня активным
             self.spblered.setEnabled(True)
             #записываем в файл состояние виджета
             module.write_setting('0',16)

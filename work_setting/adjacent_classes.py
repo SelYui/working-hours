@@ -37,6 +37,15 @@ class ShowShutOrWeb(QObject):
             tekhour = tekdateandtimeStart.hour   #текущий час
             tekminute = tekdateandtimeStart.minute    #текущая минута
     
+            #учитываем смещение
+            min_offset = int(module.read_setting(10))   #получаем смещение
+            #вычитаем смещение из минут
+            if tekminute - min_offset >= 0:
+                tekminute = tekminute - min_offset
+            else:
+                tekhour = tekhour - 1
+                tekminute = 60 + (tekminute - min_offset)
+            
             #записываем время включения компьютера
             work_time.start_work(tekminute, tekhour, tekday, tekmonth, tekyear)
             
@@ -126,6 +135,7 @@ class ThreadProgressRecount(QObject):
     show_act = pyqtSignal()
     count_changed = pyqtSignal(int)          #сигнал для вывода прогресса перезаписи
     not_recount = pyqtSignal()
+    donot_open = pyqtSignal()
     finished_progress = pyqtSignal()
     
     #функция для подсчета прогресса пересчета Exel файла
@@ -135,22 +145,31 @@ class ThreadProgressRecount(QObject):
     @pyqtSlot()
     def CountRecount(self):
         #получаем массив годов
-        exel_year = work_time.exel_year()
+        try:
+            exel_year = work_time.exel_year()   #на существование файла
+        except:
+            self.donot_open.emit()
+            self.finished.emit()
+            self.finished_progress.emit()
+            return
         step = 100/len(exel_year)
         count = 0
         self.show_act.emit()
         self.count_changed.emit(count)
         #в цикле вычисляем количество рабочих часов в каждом из месяцев в году
         for i in range(len(exel_year)):
-            result = work_time.year_recount(int(exel_year[i]))
-            #если пересчет не удался
-            if result == False:
+            try:
+                result = work_time.year_recount(int(exel_year[i]))
+                #если пересчет не удался
+                if result == False:
+                    self.not_recount.emit()
+                    break
+            except:
                 self.not_recount.emit()
                 break
             
             count = count + step
             self.count_changed.emit(count)
-        
         self.finished.emit()
         self.finished_progress.emit()
     
