@@ -121,7 +121,7 @@ def start_work(tekminute, tekhour, tekday, tekmonth, tekyear):
         write_book.get_sheet(sheet_index).write(i,1,str(tekhour)+':'+str(tekminute))
 
     #вычисляем отработанное время в авансе
-    if tekday >= 15 and int(dd) < 15:
+    if tekday > 15 and int(dd) <= 15:
         #вычисляем сумму в этом месяце
         i = sheet_nrows-1
         #ищем наименование месяца в файле
@@ -129,6 +129,7 @@ def start_work(tekminute, tekhour, tekday, tekmonth, tekyear):
         temp = read_excel(read_book, sheet, i, 0)
         while temp[6] != month_word[tekmonth-1]:
             i=i-1
+            temp = read_excel(read_book, sheet, i, 0)
         #суммируем все ячейки часов в месяце
         #начальное значение отработанных часов
         mount_sum = 0
@@ -146,7 +147,7 @@ def start_work(tekminute, tekhour, tekday, tekmonth, tekyear):
         #округляем до 3его знака
         mount_sum = round(mount_sum,3)
         #заполняем сумму часов в соответствующую строку
-        write_book.get_sheet(sheet_index).write(i,4,'('+str(mount_sum)+')')
+        write_book.get_sheet(sheet_index).write(time_date_index,4,'('+str(mount_sum)+')')
 
     #сохраняем запись
     try:
