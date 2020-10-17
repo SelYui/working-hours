@@ -62,16 +62,11 @@ def read_setting(num_setting):
 #читаем из файла инструкцию
 def read_help():
     #читаем файл построчно
-    f = open('work_setting/work_help.txt', 'r', encoding = 'utf-8')
+    f = open('work_setting/work_help.html', 'r', encoding = 'utf-8')
     text = f.read()
     f.close()
     
     return str(text)
-
-#создание нового exel файла
-def new_timework_file(path):
-    f = open(path, 'w')
-    f.close()
 
 #сохранение в файл (не используется)
 def save_setting(new_path, mode):

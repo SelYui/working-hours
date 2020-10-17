@@ -25,12 +25,14 @@ def start_work(tekminute, tekhour, tekday, tekmonth, tekyear):
     
     #обнуление начальных условий
     flg_dontdata = False    #обнуляем признак незаполнения даты
-    
+    flg_newmonth = False    #флаг начала нового месяца
+
+    dd = mm = 8520  #пишем бред, что бы в случае чего программа не вылетела
     #открываем наш Exel файл
     try:
         read_book = xlrd.open_workbook(str(wt_filename), formatting_info=True)
-    except:
-        module.log_info('start_work: файл Exel отсутствует')
+    except Exception as e:
+        module.log_info('start_work: файл Exel отсутствует %s'% str(e))
         return
     write_book = copy(read_book)
     #Переходим на лист текущего года
@@ -54,6 +56,7 @@ def start_work(tekminute, tekhour, tekday, tekmonth, tekyear):
     if (sheet_nrows and sheet_ncols) != 0:
         #получаем последнюю дату
         i = sheet_nrows-1
+        #ищем текущий месяц
         while i > 0:
             #lastdate = sheet.row_values(i)[0]
             lastdate = read_excel(read_book, sheet, i, 0)
@@ -89,6 +92,7 @@ def start_work(tekminute, tekhour, tekday, tekmonth, tekyear):
                 i = sheet_nrows+1
         #начался новый месяц
         else:
+            flg_newmonth = True
             i = sheet_nrows+2
             #пишем месяц
             write_book.get_sheet(sheet_index).write(i,0,month_word[tekmonth-1])
@@ -99,7 +103,6 @@ def start_work(tekminute, tekhour, tekday, tekmonth, tekyear):
         #пишем месяц
         write_book.get_sheet(sheet_index).write(i,0,month_word[tekmonth-1])
         i=i+1
-    
     #заполняем строку датой
     if flg_dontdata == False:
         if tekday < 10 and tekmonth < 10:
@@ -109,7 +112,7 @@ def start_work(tekminute, tekhour, tekday, tekmonth, tekyear):
         elif tekday >= 10 and tekmonth < 10:
             write_book.get_sheet(sheet_index).write(i,0,''+str(tekday)+'.0'+str(tekmonth)+'.'+str(tekyear))
         else:
-            write_book.get_sheet(sheet_index).write(i,0,str(tekday)+'.'+str(tekmonth)+'.'+str(tekyear))    
+            write_book.get_sheet(sheet_index).write(i,0,str(tekday)+'.'+str(tekmonth)+'.'+str(tekyear))
     #заполняем строку временем
     if tekhour < 10 and tekminute < 10:
         write_book.get_sheet(sheet_index).write(i,1,'0'+str(tekhour)+':0'+str(tekminute))
@@ -119,9 +122,8 @@ def start_work(tekminute, tekhour, tekday, tekmonth, tekyear):
         write_book.get_sheet(sheet_index).write(i,1,str(tekhour)+':0'+str(tekminute))
     else:
         write_book.get_sheet(sheet_index).write(i,1,str(tekhour)+':'+str(tekminute))
-
     #вычисляем отработанное время в авансе
-    if tekday > 15 and int(dd) <= 15:
+    if (tekday > 15 and int(dd) <= 15) and flg_newmonth == False:
         #вычисляем сумму в этом месяце
         i = sheet_nrows-1
         #ищем наименование месяца в файле
@@ -148,7 +150,6 @@ def start_work(tekminute, tekhour, tekday, tekmonth, tekyear):
         mount_sum = round(mount_sum,3)
         #заполняем сумму часов в соответствующую строку
         write_book.get_sheet(sheet_index).write(time_date_index,4,'('+str(mount_sum)+')')
-
     #сохраняем запись
     try:
         write_book.save(wt_filename)
@@ -164,7 +165,7 @@ def exit_work(tekminute, tekhour, tekday, tekmonth, tekyear):
     tekhour = tekdateandtime.hour   #текущий час
     tekminute = tekdateandtime.minute    #текущая минута
     '''
-    #получаем путь к файлу и смещение
+    #получаем путь к файлу
     wt_filename = module.read_setting(4) + '/' + module.read_setting(1)
     
     #открываем наш Exel файл
@@ -174,7 +175,6 @@ def exit_work(tekminute, tekhour, tekday, tekmonth, tekyear):
         module.log_info('exit_work: файл Exel отсутствует')
         return
     write_book = copy(read_book)
-    
     #Переходим на лист текущего года
     try:
         #если лист с текущим годом уже существует
@@ -188,6 +188,13 @@ def exit_work(tekminute, tekhour, tekday, tekmonth, tekyear):
     sheet = read_book.sheet_by_index(sheet_index)
     #получаем последнюю дату
     i = sheet.nrows-1
+    if i<0:
+        #если лист пустой не записываем время ухода и выходим из программы
+        module.log_info('exit_work: в Exel файле страница %s пуста' %tekyear)
+        return
+    #начальные значения
+    dd = mm = 8520
+    
     while i > 0:
         #lastdate = sheet.row_values(i)[0]
         lastdate = read_excel(read_book, sheet, i, 0)
@@ -200,7 +207,6 @@ def exit_work(tekminute, tekhour, tekday, tekmonth, tekyear):
             #в этой строке будем писать сумарное количество часов в дне
             time_date_index = i
             break
-    
     #если месяц совпал
     if tekmonth == int(mm):
         #проверяем на то что день такой же
@@ -212,9 +218,8 @@ def exit_work(tekminute, tekhour, tekday, tekmonth, tekyear):
             module.log_info('exit_work: нет текущей даты %s'% sheet.nrows)
             return
     else:
-        module.log_info('exit_work: нет текущего мксяца %s'% sheet.nrows)
+        module.log_info('exit_work: нет текущего месяца %s'% sheet.nrows)
         return
-    
     #сравниваем текущую дату прихода со вторым (j) столбцом
     if time_compare(read_book, sheet.nrows, sheet, 2, tekhour, tekminute, time_date_index) == 0:    #если такая дата уже записанна, то ничего не делаем
         return
@@ -227,13 +232,11 @@ def exit_work(tekminute, tekhour, tekday, tekmonth, tekyear):
         write_book.get_sheet(sheet_index).write(i,2,str(tekhour)+':0'+str(tekminute))
     else:
         write_book.get_sheet(sheet_index).write(i,2,str(tekhour)+':'+str(tekminute))
-    
     #сохраняем запись
     try:
         write_book.save(wt_filename)
     except Exception as e:
         module.log_info("Не удалось сохранить в Exel. Exception: %s" % str(e))    
-    
     #получаем массив дней в месяце
     day_in_mount = arr_day_month(tekmonth, tekyear)
     #получаем номер середины месяца для подсчета аванса
@@ -243,11 +246,16 @@ def exit_work(tekminute, tekhour, tekday, tekmonth, tekyear):
     #записываем в Exel
     if write_sum_month(sum_month[0], sum_month[1], num_center_day, sum_month[2], tekmonth, tekyear) == False:
         module.log_info("Не удалось сохранить в Exel время прихода.")
-
+    
 #функция для чтения даты и времени из Excel файла
 def read_excel(read_book, sheet, rowx, colx):
-    type_cell = sheet.cell_type(rowx, colx)
-    data = sheet.cell_value(rowx, colx)
+    try:
+        #считываем значение ячейки
+        type_cell = sheet.cell_type(rowx, colx)
+        data = sheet.cell_value(rowx, colx)
+    except:
+        type_cell = 1234
+        data = 0
     #если в ячейке формат xldata:
     if type_cell == 3:
         y, m, d, h, i, s = xlrd.xldate_as_tuple(data, read_book.datemode)
@@ -292,7 +300,7 @@ def read_excel(read_book, sheet, rowx, colx):
 def pc_reload(timeexit, starthour, startminute):
     reload = int(module.read_setting(13))
     #если строка пустая, выходим из программы, такого не должно быть
-    if timeexit == '':
+    if (timeexit[3] == '') or (timeexit[4] == ''):
         module.log_info("pc reload = -2")
         return -2    #неизвестная ошибка - продолжаем работу
     else:
@@ -302,9 +310,10 @@ def pc_reload(timeexit, starthour, startminute):
     te = int(hour_e) + int(minut_e)/60
     ts = int(starthour) + int(startminute)/60
     #если разность текущего прихода и ухода менее получаса, то не добавляйте новую строчку прихода
-    if ts - te < (reload/60):
+    if ts - te <= (reload/60):
         return 0    #уходили не на долго - выходим
-    else: return 1  #уходили на долго - продолжаем работу
+    else:
+        return 1  #уходили на долго - продолжаем работу
 
 #сравниваем время текущее с временем в Exel, если совпало или меньше, то не будем записывать
 def time_compare(read_book, sheet_nrows, sheet, j, tekhour, tekminute, time_date_index):
@@ -312,7 +321,6 @@ def time_compare(read_book, sheet_nrows, sheet, j, tekhour, tekminute, time_date
     #получаем последнее время прихода
     i = sheet_nrows-1
     #пока мы в текущем дне
-    
     while (i >= time_date_index):#i > 0:
         #lastdate = sheet.row_values(i)[j]
         lastdate = read_excel(read_book, sheet, i, j)
@@ -341,9 +349,11 @@ def quit_app():
 def write_exit():
         
     dtimE = module.read_setting(25)
-    dtimE = dtimE.split()
+    
     #если приложение закрыл не пользователь
     if (dtimE != ''):
+        dtimE = dtimE.split()
+        
         timE = dtimE[-1]
         
         #получаем смещение
@@ -384,22 +394,27 @@ def year_sheet(year):
     return read_book.sheet_by_index(sheet_index), write_book, read_book
 
 #функция получения массива времян в заданном дне
-def arr_time_day(day, month, year):
+def arr_time_day(day=0, month=0, year=0):
     date = datetime.datetime.now()
     tekmonth = date.month #текущий месяц
     tekyear = date.year
     tekday = date.day
-    
+    #если параметры не заданы, считаем текущий день
+    if (day!=0) and (month!=0) and (year!=0):
     #если пересчитываемый месяц больше текущего
-    if year == tekyear and ((month == tekmonth) and (day > tekday)):
-        module.log_info("неверный день = %s"% day)
-        return 1
-    elif year == tekyear and month > tekmonth:
-        module.log_info("неверный месяц = %s"% month)
-        return 1
-    elif(year > tekyear):
-        module.log_info("неверный год = %s"% year)
-        return 1
+        if year == tekyear and ((month == tekmonth) and (day > tekday)):
+            module.log_info("arr_time_day: неверный день = %s"% day)
+            return -1
+        elif year == tekyear and month > tekmonth:
+            module.log_info("arr_time_day: неверный месяц = %s"% month)
+            return -1
+        elif(year > tekyear):
+            module.log_info("arr_time_day: неверный год = %s"% year)
+            return -1
+    else:
+        day = tekday
+        month = tekmonth
+        year = tekyear
 
     #выбираем активным лист с нашим годом
     exel_sheet = year_sheet(year)
@@ -407,7 +422,6 @@ def arr_time_day(day, month, year):
     read_book = exel_sheet[2]
     #строковая заданная дата и следующая
     dan_date = str_date(day, month, year)
-    
     #ищем наименование заданного дня в файле
     i = sheet.nrows-1
     #while sheet.row_values(i)[0] != dan_date and i > 0:
@@ -415,9 +429,9 @@ def arr_time_day(day, month, year):
     while temp[6] != dan_date and i > 0:
         i=i-1
         temp = read_excel(read_book, sheet, i, 0)
-    if i == 0:
-        return 1
-        
+    if i <= 0:
+        return -1
+
     index_sumS = i  #запоминаем строку, c началом заданного дня
     #ищем наименование следующего дня в файле (или конец файла)
     for i in range(index_sumS, sheet.nrows):
@@ -505,7 +519,6 @@ def time_in_day(timestart, timeexit):
             diner_time += (timestart[i+1] - timeexit[i])
         except:
             None
-    
     #если в дне отработано больше 4 часов - вычитаем обед из отработанных часов
     sum_time = round(sum_time,3)
     if sum_time > 4:
@@ -583,7 +596,7 @@ def month_recount(month_day, num_cent_day):
         day = month_day[i]
         time = arr_time_day(int(day[:2]), int(day[3:5]), int(day[6:]))
         #если массив получен нормально, вычисляем сумму в месяце и массив рабочих часов в дне
-        if time != 1:
+        if time != -1:
             day_time = time_in_day(time[0], time[1])
             sum_day_time.append(day_time)
             sum_month_time = sum_month_time + day_time
@@ -705,3 +718,17 @@ def exel_year():
     read_book = xlrd.open_workbook(str(wt_filename), formatting_info=True)
     #получаем массив годов
     return read_book.sheet_names()
+
+#создание Excel файла
+def new_timework_file(path):
+    try:
+        book = xlwt.Workbook('utf-8')   #создали книку
+        sheetname = datetime.datetime.now().year
+        sheet = book.add_sheet(str(sheetname))  #создали страницу с текущим годом
+        sheet.portrain = False  #не альбомная ориентация
+        book.save(path)     #сохраняем файл
+        return 0
+    except Exception as e:
+        module.log_info("new_timework_file: Не удалось создать Exel файл. Exception: %s" % str(e))
+        return -1
+    

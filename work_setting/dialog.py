@@ -2,14 +2,14 @@
 '''
 Класс для вывода акна с настройками
 '''
-import os, sys, subprocess, webbrowser
+import os, sys, subprocess, webbrowser, datetime
 from work_setting import module, adjacent_classes
-from work_lib import work_time
+from work_lib import work_time, shutdown_lib
 
 from PyQt5.QtWidgets import (QPushButton, QLineEdit, QLabel, QDesktopWidget, QToolTip, QSystemTrayIcon, QDialog, QMessageBox, QAction,
     QFileDialog, QApplication, QMenu, QSpinBox, QCheckBox, QWidget, QStyle, QTextBrowser, QHBoxLayout, QVBoxLayout, QGridLayout)
 from PyQt5.QtGui import QIcon, QFont, QTextCursor
-from PyQt5.QtCore import Qt, QThread
+from PyQt5.QtCore import Qt, QThread, QTimer
 from PyQt5.Qt import QIntValidator, QRegExp, QRegExpValidator
 
 url_mars = 'http://www.mars/asu/report/enterexit/'
@@ -26,6 +26,8 @@ class MainWindow(QWidget):
         self.initThread()
         # инициализация GUI
         self.initUI()
+        # вычисление текущего времени
+        self.NowYourTime()
         
     def initThread(self):
         #создаем поток внутри формы
@@ -58,12 +60,16 @@ class MainWindow(QWidget):
         #получаем настройки из файла
         WorkPath = module.read_setting(4)
         WorkName = module.read_setting(1)
+        AbsPath = os.path.abspath(WorkPath + '/' + WorkName)
         WorkDiner = module.read_setting(7)
         WorkOffset = int(module.read_setting(10))
         WorkReload = int(module.read_setting(13))
         YouNumber = module.read_setting(19)
         CheckNum = int(module.read_setting(16))
         WorkShut = module.read_setting(22)
+        #признак необходимости перезагрузки 0-не надо, 5577 - надо
+        self.flg_shutdown = 0
+        self.now_time = 0
      
     #Создаем само окно
         self.resize(495, 360)                            # Устанавливаем начальные размеры окна
@@ -85,11 +91,12 @@ class MainWindow(QWidget):
         
         self.le = QLineEdit(self)                   #создаем строку для ввода пути к файлу
         self.le.setFont(QFont('Arial', 12))         #Шрифт
-        self.le.setText(WorkPath + '/' + WorkName)  #пишем путь из настроечного файла
+        self.le.setText(AbsPath)  #пишем путь из настроечного файла
         
         self.btnI = QPushButton('Изменить', self)       #создаем кнопку для изменения расположения файла
         self.btnI.setFont(QFont('Arial', 12))        #Шрифт
-        self.btnI.clicked.connect(self.getfile)      #действие по нажатию
+        #self.btnI.clicked.connect(self.getfile)      #действие по нажатию
+        self.btnI.clicked.connect(self.savefile)
         self.btnI.setAutoDefault(True)               # click on <Enter>
 
         self.btnO = QPushButton('Открыть', self)    #создаем кнопку для открытия директории/файла
@@ -224,26 +231,30 @@ class MainWindow(QWidget):
         QToolTip.setFont(QFont('Arial', 10))    # метод устанавливает шрифт, используемый для показа всплывающих подсказок.
         self.setToolTip('Это окно выбора основных настроек программы')  # создаем подсказку для окна
         self.lblN.setToolTip('Текущее имя файла, в котором хранится Ваше рабочее время')
-        self.le.setToolTip('Файл с Вашим рабочим временем находится по этому пути\n' + WorkPath + '/' + WorkName)
+        self.le.setToolTip('Файл с Вашим рабочим временем находится по этому пути\n' + AbsPath)
         self.lblI.setToolTip('Файл с Вашим рабочим временем находится по этому пути')
         self.btnI.setToolTip('Выберете файл рабочего времени')    # создаем подсказку для кнопки
         #self.btnS.setToolTip('Создать новый файл рабочего времени')    # создаем подсказку для кнопки
         self.btnO.setToolTip('Открыть папку с файлом')    # создаем подсказку для кнопки
         self.btnRec.setToolTip('Пересчет рабочего времени в файле\n' + WorkName)    # создаем подсказку для кнопки
         self.btn_save.setToolTip('Сохранить выставленные настройки')    # создаем подсказку для кнопки
-        self.spbO.setToolTip('Укажите время вашего обеда в мин.')
+        self.lblO.setToolTip('Укажите время Вашего обеда в мин.')
+        self.spbO.setToolTip('Укажите время Вашего обеда в мин.')
         self.spb.setToolTip('Укажите смещение от времени вкл/выкл ПК')    # создаем подсказку
         self.lblS.setToolTip('Сколько Вам идти от КПП до рабочего места?')    # создаем подсказку для кнопки
         #self.lblSm.setToolTip('Укажите смещение в минутах')
-        self.lblU.setToolTip('Если компьютер выключится на заданное время,\n то в файле Вашего рабочего времени уход не зафиксируется')
+        self.lblU.setToolTip('Если компьютер выключится на заданное время,\nто в файле Вашего рабочего времени уход не зафиксируется')
         self.spblered.setToolTip('Введите время неучетного выхода в мин.')
-        self.lblCh.setToolTip('Введите вашь номер на сайте')
-        self.chweb.setToolTip('Время Вашего прихода фиксируется на сайте:\n' + url_mars + '\n брать время Вашего прихода от туда?')
+        self.lblCh.setToolTip('Введите Вашь номер на сайте')
+        self.chweb.setToolTip('Время Вашего прихода фиксируется на сайте:\n' + url_mars + '\nбрать время Вашего прихода от туда?')
         self.lenum.setToolTip('Вашь номер на сайте: ' + YouNumber)
-        self.btnch.setToolTip('Как узнать свой номер на сайте?')
-        self.lblSh.setToolTip('Если ваше время выхода на КПП после этого времени, выключаю компьютер')
+        self.btnch.setToolTip('Нажмите, чтобы понять как узнать свой номер на сайте')
+        self.lblSh.setToolTip('Если Вы вышли за КПП после этого времени, выключаю компьютер')
         self.leshut.setToolTip('Введите время в формате:\n00:00')
-        self.tray_icon.setToolTip('Отслеживаю Ваше рабочее время')
+        
+    #если нет имени файла, то показать окно
+        if WorkName == '':
+            self.show()
 
     #Функция для расположения виджетов в окне
     def layout_in_main(self):
@@ -283,9 +294,9 @@ class MainWindow(QWidget):
         self.grid_other.addWidget(self.lblCh, 1, 0)
         self.grid_other.addWidget(self.lenum, 1, 1)
         self.grid_other.addWidget(self.lblSh, 2, 0, 1, 4)
-        self.grid_other.addWidget(self.leshut, 2, 2)
-        self.grid_other.addWidget(self.btnRec, 3, 7)
-        self.grid_other.addWidget(self.btn_save, 3, 8)
+        self.grid_other.addWidget(self.leshut, 2, 5)
+        self.grid_other.addWidget(self.btnRec, 3, 6)
+        self.grid_other.addWidget(self.btn_save, 3, 7)
     #заносим все в горисонтальный слой
         self.v_box = QVBoxLayout()
         self.v_box.addLayout(self.h_boxN)
@@ -307,10 +318,10 @@ class MainWindow(QWidget):
         self.move(qr.topLeft())             # перемещаем верхнюю левую точку окна приложения в верхнюю левую точку прямоугольника qr, таким образом центрируя окно на нашем экране.
     
 
-    #диалоговое окно выбора нового файла
+    #диалоговое окно выбора нового файла (не используется)
     def getfile(self):
         dir_path = module.read_setting(4) + '/' + module.read_setting(1)
-        fname = QFileDialog.getOpenFileName(self, 'Выбрать файл', dir_path, 'Exel files (*.xls *.xlsx)')
+        fname = QFileDialog.getOpenFileName(self, 'Выбрать файл', dir_path, 'Exel files (*.xls)')
         #если новый файл выбран, переписываем путь в настройках и в наших текстовых виджетах
         if fname != ('', ''):
             new_dir = os.path.dirname(fname[0])    #путь папки в которой лежит файл
@@ -322,18 +333,27 @@ class MainWindow(QWidget):
             self.le.setText(fname[0])
             self.lblN.setText('Настройки файла ' + new_name)
         
-    #диалоговое окно сохранения нового файла (не используется)
+    #диалоговое окно сохранения нового файла
     def savefile(self):
         dir_path = module.read_setting(4) + '/' + module.read_setting(1)
-        fname = QFileDialog.getSaveFileName(self, 'Выбрать файл', dir_path, 'Exel files (*.xls *.xlsx)')
+        fname = QFileDialog.getSaveFileName(self, 'Выбрать файл', dir_path, 'Exel files (*.xls)',
+                                            options = QFileDialog.DontConfirmOverwrite)
         #если новый файл выбран, переписываем путь в настройках и в наших текстовых виджетах
         if fname != ('', ''):
-            new_dir = module.save_setting(fname[0],'Repace')
-            if new_dir!=0:
-                module.log_info("save warning: %s"% new_dir)
-            self.le.setText(new_dir[0] + '/' + new_dir[1])
-            self.lblN.setText('Настройки файла ' + new_dir[1])
-            self.lblN.adjustSize()
+            new_dir = os.path.dirname(fname[0])    #путь папки в которой лежит файл
+            new_name = os.path.basename(fname[0])   #имя файла
+            #создание нового файла
+            if(not os.path.exists(fname[0])):
+                if(work_time.new_timework_file(fname[0])!=-1):
+                    self.le.setText(fname[0])
+                    self.lblN.setText('Настройки файла ' + new_name)
+                else:
+                    QMessageBox.warning(self, 'Предупреждение','Не удалось создать файл')
+                    self.le.setText(dir_path)
+                    self.lblN.setText('Настройки файла ' + module.read_setting(1))
+            else:
+                self.le.setText(fname[0])
+                self.lblN.setText('Настройки файла ' + new_name)
     
     #сохраняем настройки с учетом того что введено в строку
     def save_setting_btn(self):
@@ -342,90 +362,112 @@ class MainWindow(QWidget):
         WorkName = module.read_setting(1)
         WorkNumb = module.read_setting(19)
         WorkShut = module.read_setting(22)
+        AbsPath = os.path.abspath(WorkPath + '/' + WorkName)
 
         dir_path = self.le.text()   #получаем путь к новому файлу
         you_numb = self.lenum.text()
         shut_time = self.leshut.text()
         
-        #сохраняем новй путь Exel файла в настроечный файл
-        if dir_path != '':
+        #сохраняем новый путь Exel файла в настроечный файл
+        dir_path = os.path.abspath(dir_path)        #получаем абсолютный путь к файлу
+        f_name, f_exstension = os.path.splitext(dir_path)   #выделяем название и расширение
+        #проверка имени файла на корректность и расширение
+        if f_name != '' and f_exstension == '.xls':
             #если выбранный файл существует записываем в настройки путь к нему
             if os.path.exists(dir_path):
                 #запись в настроечный файл нового имени файла
                 module.write_setting(os.path.basename(dir_path), 1)
-                #запись в настроечный файл нового пути
+                #запись в настроечный файл нового пути и в строку
                 module.write_setting(os.path.dirname(dir_path), 4)
-            #если файла нет, тосздать его?
+                self.le.setText(dir_path)
+                self.flg_shutdown = 5577 #после изменения этой настройки предложим перезагрузить компьютер
+            #если файла нет, то сздать его?
             else:
                 reply = QMessageBox.question(self, 'Сообщение', 'Файл не найден.\nСоздать новый файл?', QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
                 #QMessageBox.warning(self, 'Предупреждение','Файл не найден.\nСоздать новый файл?')
                 # если нажато "Да", создаем файл и сохраняем его путь в настроечный файл
                 if reply == QMessageBox.Yes:
-                    module.new_timework_file(dir_path)
-                    #запись в настроечный файл нового имени файла
-                    module.write_setting(os.path.basename(dir_path), 1)
-                    #запись в настроечный файл нового пути
-                    module.write_setting(os.path.dirname(dir_path), 4)
-                #self.le.setText(WorkPath + '/' + WorkName)    #вернуть исходное значение пути
+                    if (work_time.new_timework_file(dir_path)!=-1):
+                        #запись в настроечный файл нового имени файла
+                        module.write_setting(os.path.basename(dir_path), 1)
+                        #запись в настроечный файл нового пути и в строку
+                        module.write_setting(os.path.dirname(dir_path), 4)
+                        self.le.setText(dir_path)
+                        self.flg_shutdown = 5577 #после изменения этой настройки предложим перезагрузить компьютер
+                    else:
+                        QMessageBox.warning(self, 'Предупреждение','Не удалось создать файл')
+                        self.le.setText(AbsPath)
+                else:
+                    self.le.setText(AbsPath)    #вернуть исходное значение пути
         #если путь пустой выводим сообщение
         else:
-            QMessageBox.warning(self, 'Предупреждение','Путь к файлу не может быть пустым')
-            self.le.setText(WorkPath + '/' + WorkName)
+            QMessageBox.warning(self, 'Предупреждение','Файл не должен иметь пустое имя\nи должен иметь расширение .xls')
+            self.le.setText(AbsPath)
         
-        #сохраняем значение из SpinBox в файл
+        #сохраняем значения из SpinBox в файл
         module.write_setting(self.spb.value(),10)
         module.write_setting(self.spblered.value(),13)
         module.write_setting(self.spbO.value(), 7)
         
-        #сохраняем новый номер пользователя в файл
-        if you_numb != '':
-            #если поле не пустое - записываем новое значение в файл
-            module.write_setting(you_numb,19)
-        else:
-            #иначе, выводим предупреждение
-            QMessageBox.warning(self, 'Предупреждение','Ваш номер не может быть пустым')
-            self.lenum.setText(WorkNumb)
-        
-        #сохраняем новое время выхода
-        if shut_time != '' and len(shut_time) == 5:
-            #если поле не пустое - записываем новое значение в файл
-            module.write_setting(shut_time,22)
-        elif (len(shut_time) < 5):
-            QMessageBox.warning(self, 'Предупреждение','Время должно иметь формат:\n00:00')
-            self.leshut.setText(WorkShut)
-        else:
-            #иначе, выводим предупреждение
-            QMessageBox.warning(self, 'Предупреждение','Время выключения не может быть пустым')
-            self.leshut.setText(WorkShut)
+        #если галочка выставлена
+        if int(module.read_setting(16)):
+            #сохраняем новый номер пользователя в файл
+            if you_numb != '':
+                #если поле не пустое - записываем новое значение в файл
+                module.write_setting(you_numb,19)   #по идее после этого не обязательно перезагружать комп
+            else:
+                #иначе, выводим предупреждение
+                QMessageBox.warning(self, 'Предупреждение','Ваш номер не может быть пустым')
+                self.lenum.setText(WorkNumb)
+            
+            #сохраняем новое время выхода
+            if shut_time != '' and len(shut_time) == 5:
+                #если поле не пустое - записываем новое значение в файл
+                module.write_setting(shut_time,22)
+            elif (len(shut_time) < 5):
+                QMessageBox.warning(self, 'Предупреждение','Время должно иметь формат:\n00:00')
+                self.leshut.setText(WorkShut)
+            else:
+                #иначе, выводим предупреждение
+                QMessageBox.warning(self, 'Предупреждение','Время выключения не может быть пустым')
+                self.leshut.setText(WorkShut)
         
         #выводим предупреждение что новые настройки заработают после перезагрузки компа
-        QMessageBox.warning(self, 'Предупреждение','Некоторые настройки вступят в силу после перезапуска программы')
+        if self.flg_shutdown == 5577:
+            self.flg_shutdown = 0   #после сохранения настроек сбрасываем признак
+            reply = QMessageBox.question(self, 'Предупреждение',
+                                         'Настройки вступят в силу после перезагрузки компьютера.\nПерезагрузить сейчас?',
+                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
+            # если нажато "Да", перезагружаем систему
+            if reply == QMessageBox.Yes:
+                shutdown_lib.restart_system()
+
     
     #открываем папку с вашим файлом
     def opendirectory(self):
         path_file = module.read_setting(4) + '/' + module.read_setting(1)
         if os.name == 'nt':
             try:
-                os.startfile(os.path.dirname(path_file))    #открыть каталог с файлом
+                #os.startfile(os.path.dirname(path_file))    #открыть каталог с файлом
                 os.startfile(path_file)                     #запуск файла
-            except:
-                self.donot_open()
+            except Exception as e:
+                self.donot_open(e)
         else:
             try:
                 opener = "open"
                 subprocess.call([opener, path_file])
-            except:
-                self.donot_open()
+            except Exception as e:
+                self.donot_open(e)
         
     #не могу открыть файл
-    def donot_open(self):
-        QMessageBox.warning(self, 'Предупреждение','Не могу открыть файл')
+    def donot_open(self, exception):
+        QMessageBox.warning(self, 'Предупреждение','Не могу открыть файл\n' + str(exception))
     
     #открываем подсказку для выяснения номера на сайте
     def openhelp(self):
         #откроем дочернее окно с инструкцией
         self.w = AdjWindow()
-        self.w.show()
+        #self.w.show()
     
     #когда текст меняется, пишем ":" во второй символ
     def time_shutdow(self):
@@ -444,7 +486,7 @@ class MainWindow(QWidget):
     #если пересчет не удался показываем предупреждение
     def do_not_rec(self):
         #module.log_info("exel_recount exception: %s" % e)
-        message = 'Ошибка пересчета файла\nПожалуйста проверьте, что:\n    - файл составлен корректно (имеет все названия месяцев, все времена прихода и ухода)\n    - файл закрыт\nИ повторите попытку'
+        message = 'Ошибка пересчета файла\nПожалуйста проверьте, что:\n    - файл составлен корректно (имеет все названия месяцев, все времена прихода и ухода);\n    - файл закрыт.\nИ повторите попытку'
         reply = QMessageBox.warning(self, 'Ошибка', message, QMessageBox.Retry | QMessageBox.Cancel, QMessageBox.Retry)
         # если нажато "Повтор", запускаемся еще раз
         if reply == QMessageBox.Retry:
@@ -456,13 +498,14 @@ class MainWindow(QWidget):
 
     #действия при выборе подсчета времени с сайта
     def webtime(self, state):
-        chtext = 'Теперь время вашего прихода и ухода берется с сайта.\nВаш компьютер автоматически запишет время вашего ухода в файл и\nвыключится!'
+        chtext = 'Теперь время Вашего прихода и ухода берется с сайта.\nВаш компьютер автоматически запишет время Вашего ухода в файл и\nвыключится!'
         
         #если chekbox устанавили
         if state == Qt.Checked:
             #если изменился статус, высвечиваем сообщение
             if int(module.read_setting(16)) == 0:
                 QMessageBox.warning(self, 'Предупреждение',chtext)
+                self.flg_shutdown = 5577 #после изменения этой настройки предложим перезагрузить компьютер
             
             #module.write_setting('0',10)        #записываем в настроечный файл нулевое смещение
             #WorkOffset = int(module.read_setting(10))
@@ -481,31 +524,82 @@ class MainWindow(QWidget):
             module.write_setting('1',16)
         #если checkbox сбросили
         else:
+            #если изменился статусе
+            if int(module.read_setting(16)) == 1:
+                self.flg_shutdown = 5577 #после изменения этой настройки предложим перезагрузить компьютер
+            self.lenum.setText(module.read_setting(19))
             self.lenum.setEnabled(False)    #делаем строку ввода индивидуального номера неактивной
+            self.leshut.setText(module.read_setting(22))
             self.leshut.setEnabled(False)        #делаем строку неактивной
             #self.spb.setEnabled(True)      #делаем виджет ввода смещеня активным
             self.spblered.setEnabled(True)
             #записываем в файл состояние виджета
             module.write_setting('0',16)
+    
+    #метод заполнения диалогового окна из файла
+    def RestoreFromFile(self):
+        self.le.setText(os.path.abspath(str(module.read_setting(4) + '/' + module.read_setting(1))))
+        self.spbO.setValue(int(module.read_setting(7)))
+        self.spb.setValue(int(module.read_setting(10)))
+        self.spblered.setValue(int(module.read_setting(13)))
+        self.lenum.setText(module.read_setting(19))
+        self.leshut.setText(module.read_setting(22))
+        self.flg_shutdown = 0
+    
+    #наведение на иконку в трее
+    def NowYourTime(self):
+        day_time = []
+        try:
+            time = work_time.arr_time_day()    #получаем массив сегодняшних часов
+        except:
+            time = -1
+        if time != -1 and len(time) > 0:
+            time_start = str(time[0][0])    #время прихода
+            #подменяем время ухода на текущее время по компу
+            try:
+                time[1][len(time[0])-1] = datetime.datetime.now().time().strftime("%H:%M")
+            except:
+                time[1].append(datetime.datetime.now().time().strftime("%H:%M"))
+            day_time.append(time[0])
+            day_time.append(time[1])
+            sum_time = work_time.time_in_day(day_time[0], day_time[1]) #считаем количество часов в сегодняшнем дне
+            self.tray_icon.setToolTip(f'Отслеживаю Ваше рабочее время.\nВы пришли: {time_start}\nОтработано: {sum_time}')
+        else:
+            self.tray_icon.setToolTip('Отслеживаю Ваше рабочее время.')
+        #просто записываем в файл текущее время (так тратим меньше ресурсов и не надо "ловить" выключение компьютера)
+        #получаем текущее время
+        timeExit = datetime.datetime.now()
+        #записываем текущее время в файл
+        module.write_setting(timeExit.strftime("%d %m %Y %H:%M"), 25)
        
     # действие по нажатию на кнопку 'X'
     def closeEvent(self, event):
         #если путь в строке не совпадает с тем что записан в настроечном файле
-        setting_dir_path = module.read_setting(4) + '/' + module.read_setting(1)
+        setting_dir_path = os.path.abspath(module.read_setting(4) + '/' + module.read_setting(1))
+        setting_diner = int(module.read_setting(7))
         setting_offset = int(module.read_setting(10))
         setting_reload = int(module.read_setting(13))
-        setting_number = int(module.read_setting(19))
+        setting_number = str(module.read_setting(19))
+        setting_shtime = str(module.read_setting(22))
         
-        dir_path = self.le.text()
+        dir_path = os.path.abspath(self.le.text())
+        work_diner = int(self.spbO.value())
         work_offset = int(self.spb.value())
         work_reload = int(self.spblered.value())
-        you_number = int(self.lenum.text())
+        you_number = str(self.lenum.text())
+        shtime = str(self.leshut.text())
         
-        if (dir_path != setting_dir_path) or (work_offset != setting_offset) or (you_number != setting_number) or (work_reload != setting_reload):
+        if (dir_path != setting_dir_path) or (work_diner != setting_diner) or (work_offset !=
+            setting_offset) or (you_number != setting_number) or (work_reload != setting_reload) or (shtime !=
+            setting_shtime) or (self.flg_shutdown == 5577):
+            
             reply = QMessageBox.question(self, 'Сообщение', "Вы хотите сохранить настройки?", QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
-            # если нажато "Да", сохраняем файл подтверждаем закрыти
+            # если нажато "Да", сохраняем файл подтверждаем закрытие
             if reply == QMessageBox.Yes:
                 self.save_setting_btn()
+            # если нет, то востанавливаем значения в виджете из файла
+            else:
+                self.RestoreFromFile()
 
         #сворачиваем приложение в Tray
         event.ignore()                          #игнорируем выход из программы
@@ -538,11 +632,10 @@ class AdjWindow(QDialog):
     def __init__(self):
         super(AdjWindow, self).__init__()
                   
-        self.resize(350,500)                                # Устанавливаем фиксированные размеры окна
+        self.resize(500,500)                                # Устанавливаем фиксированные размеры окна
         self.setWindowTitle("Как узнать свой индивидуальный номер")  # Устанавливаем заголовок окна
         self.setWindowIcon(self.style().standardIcon(QStyle.SP_TitleBarContextHelpButton))   #устанавливаем одну из стандартных иконку
         
-        text = module.read_help()
         #чтобы наше поле занимало все окно
         self.vbox = QVBoxLayout()
         #создаем поле с текстом инструкции и ссылкой
@@ -553,8 +646,13 @@ class AdjWindow(QDialog):
         self.vbox.addWidget(self.pole_vivod)
         self.setLayout(self.vbox)
         
-        self.pole_vivod.append(text)
-        self.pole_vivod.moveCursor(QTextCursor.Start)
+        try:
+            text = module.read_help()
+            self.pole_vivod.append(text)
+            self.pole_vivod.moveCursor(QTextCursor.Start)
+            self.show()
+        except Exception as e:
+            QMessageBox.warning(self, 'Предупреждение','Не могу открыть файл с инструкцией\n' + str(e))
         
     #обрабатываем клик по ссылке
     def linkClicked(self, url):
@@ -565,5 +663,9 @@ def app_main():
     app = QApplication(sys.argv)
     ex = MainWindow()
     ex.thread.start()
+    # создадим таймер для подсчета и вывода текущего отработанного времени
+    timer = QTimer()
+    timer.timeout.connect(ex.NowYourTime)
+    timer.start(30*1000)        #раз в 30 секунд
     #ex.show()                   #не забыть закоментировать
     sys.exit(app.exec_())

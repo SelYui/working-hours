@@ -36,34 +36,37 @@ def you_split_time(my_data):
 
 #получаем массивы времени прихода/ухода (точность до минуты)
 def came_left(lines, timestart, timeexit):
-    count = 7
-    while count < len(lines):
-        #время прихода
-        try:
-            start_tek = lines[count]
-            timestart.append(start_tek[:5]) #записываем только часы и минуты
-        except IndexError:
-            return -1
+    for count in range(6,len(lines)):
+        if lines[count] == 'Пришел' or lines[count] == 'Ушел':
+            #время прихода
+            try:
+                start_tek = lines[count+1]
+                if (start_tek != 'Пришел') and (start_tek != 'Ушел') and (not start_tek[:5] in timestart):
+                    timestart.append(start_tek[:5]) #записываем только часы и минуты
+            except IndexError:
+                return -1
     
-        #время первого ухода
-        try:
-            exit_tek = lines[count+1]
-            timeexit.append(exit_tek[:5])   #записываем только часы и минуты
-        except IndexError:
-            return -2
-    
-        count = count+3
+            #время первого ухода
+            try:
+                exit_tek = lines[count+2]
+                if (exit_tek != 'Пришел') and (exit_tek != 'Ушел') and (not exit_tek[:5] in timeexit):
+                    timeexit.append(exit_tek[:5])   #записываем только часы и минуты
+            except IndexError:
+                return -2
     
     return count
 
 #основная функция для работы с данными с сайта
 def web_main():
     #return True
+    # обнуление счетчика опроса сайта
+    count = 0
+    
     #получаем дату с сайта
     date = url_date()
     if date == -1:
         module.log_info('на сайте дата не найдена')
-        #используем двту компьютера
+        #используем дату компьютера
         data = datetime.datetime.now()
         tekyear = data.year   #Текущий год
         tekmonth = data.month #текущий месяц
@@ -74,34 +77,37 @@ def web_main():
         tekyear = int(date[0:4])    #текущий год
     
     #получаем время после которого выключим компьютер
-    max_timE = module.read_setting(25)
+    max_timE = module.read_setting(22)
     #составляем запрос для сайта
     name_id = module.read_setting(19)
     my_data = {'type': 'search', 'info': name_id}
     
     while True:
         #также записываем текущее время в файл, что бы в случае сбоя записать его в Exel файл
-        timeExit = datetime.datetime.now()      #получаем текущее время
-        #записываем текущее время в файл
-        module.write_setting(timeExit.strftime("%d %m %Y %H:%M"), 25)
+        CurrentTime = datetime.datetime.now()      #получаем текущее время
         #обнуляем массивы перед чтением с сайта
         timestart = []
         timeexit = []
+        
+        if CurrentTime.strftime("%H:%M") < max_timE:
+            count = 60         #заряжаем новый таймер на час
+        else:
+            count = 10         #заряжаем новый таймер на 10 минут
         lines = you_split_time(my_data)
         if lines == -1:
             module.log_info('сервер не отвечает')
         elif lines == -2:
-            msg = ('пропуск человека с номером', name_id, 'не пробит')
+            msg = ('пропуск человека с номером %s не пробит'% name_id)
             module.log_info(msg)
         else:
             #статус наличия человека на предприятии (это лишнее, т.к. есть другие методы проверки)
             tek_status = int(lines[0])
             #получаем массивы прихода - ухода
             status_availability = came_left(lines, timestart, timeexit)
-
-            #timeexit = ['18:40']        #ДЛЯ ОТЛАДКИ
-        
             #записываем массив времен прихода (если вдруг комп включили после нескольких заходов на марс)
+            #технология для отладки
+            #timestart = ['07:00','08:00','09:00','10:00','11:00','12:00']
+            #timeexit = ['07:30','08:30','09:30','10:30','11:30','12:30']
             for i in range(len(timestart)):
                 #получаем время прихода, записываем его в Exel
                 try:
@@ -119,7 +125,7 @@ def web_main():
                     None
                     #module.log_info('не удалось записать время ухода')
                 i=i+1
-
+    
             try:
                 #проверяем условие выключения компьютера
                 if(timeexit[-1] > max_timE):
@@ -129,7 +135,7 @@ def web_main():
                     None
             except:
                 None
-        time.sleep(60)
+        time.sleep(60*count)          #пауза в 60 секунд что бы каждую минуту записывать время компьютера
     
 #функция для получения даты с сайта
 def url_date():

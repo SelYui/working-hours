@@ -45,18 +45,10 @@ class ShowShutOrWeb(QObject):
             else:
                 tekhour = tekhour - 1
                 tekminute = 60 + (tekminute - min_offset)
-            
             #записываем время включения компьютера
             work_time.start_work(tekminute, tekhour, tekday, tekmonth, tekyear)
-            
-            #просто записываем каждую минуту в файл текущее время (так тратим меньше ресурсов и не надо "ловить" выключение компьютера)
-            while True:
-                #получаем текущее время
-                timeExit = datetime.datetime.now()
-                #записываем текущее время в файл
-                module.write_setting(timeExit.strftime("%d %m %Y %H:%M"), 25)
-                time.sleep(60)
-            self.finished_global.emit()
+
+            #self.finished_global.emit()
 
     #если функция вернет флаг выключения, то запустим окно с таймером на выключение ПК
     @pyqtSlot()

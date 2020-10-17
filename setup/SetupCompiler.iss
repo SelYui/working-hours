@@ -4,7 +4,7 @@
 ;Константы
 
 #define Name      "Рабочее время"    ;Имя приложения
-#define Version   "1.0"  ;Версия приложения
+#define Version   "2.0"  ;Версия приложения
 #define Publisher "SelYuI"        ;Разработчик
 #define URL       "https://github.com/SelYui"    ;Сайт разработчика
 #define Email     "SelYui2112@gmail.com"  ;Почта разработчика
@@ -32,12 +32,12 @@ AppReadmeFile={#ReadmMe}
 DefaultDirName=C:\{#Publisher}\{#Name}
 
 ; Каталог, куда будет записан собранный setup и имя исполняемого файла
-OutputDir=D:\python\working-hours\Setup
+OutputDir=C:\virtual_py\project\working-hours\setup
 OutputBaseFileName=Setup
 
 ; Файл иконки
-SetupIconFile=D:\icon\install.ico
-UninstallIconFile=D:\icon\uninstall.ico
+SetupIconFile=X:\install.ico
+UninstallIconFile=X:\uninstall.ico
 
 ; Параметры сжатия
 Compression=lzma
@@ -52,8 +52,8 @@ AlwaysShowGroupOnReadyPage = no
 ;Языки установщика
 [Languages]
 
-Name: "english"; MessagesFile: "compiler:Default.isl"; LicenseFile: "D:\python\working-hours\LICENSE.md"
-Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"; LicenseFile: "D:\python\working-hours\LICENSE_rus.md"
+Name: "english"; MessagesFile: "compiler:Default.isl"; LicenseFile: "C:\virtual_py\project\working-hours\LICENSE.md"
+Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"; LicenseFile: "C:\virtual_py\project\working-hours\LICENSE_rus.md"
 
 ;Указываем путь к иконкам установщика
 [Icons]
@@ -64,12 +64,12 @@ Name: "{autostartup}\{#Name}"; Filename: "{app}\{#ExeName}"
 [Files]
 
 ; Исполняемый файл
-Source: "D:\python\working-hours\exe\{#ExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\virtual_py\project\working-hours\exe\{#ExeName}"; DestDir: "{app}"; Flags: ignoreversion
 ; Прилагающиеся ресурсы
-Source: "D:\python\working-hours\exe\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "C:\virtual_py\project\working-hours\exe\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; RadMe
 ;Source: "D:\python\labSOS\README.md"; DestDir: "{app}"; Flags: isreadme
-Source: "D:\python\working-hours\README.md"; DestDir: "{app}"
+Source: "C:\virtual_py\project\working-hours\README.md"; DestDir: "{app}"
 
 ; Запуск программы после установки
 [Run]
